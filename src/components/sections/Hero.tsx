@@ -1,9 +1,9 @@
 import { motion, useInView } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import { useRef } from 'react'
-import { NAV_ITEMS } from '@/data/nav'
+import { useLang } from '@/contexts/LangContext'
 import { useScrollVideo } from '@/hooks/useScrollVideo'
-import { WordsPullUpMultiStyle } from '@/components/ui'
+import { WordsPullUpMultiStyle, LangSwitch } from '@/components/ui'
 
 const fadeUp = (delay: number) => ({
   initial: { y: 20, opacity: 0 },
@@ -12,39 +12,44 @@ const fadeUp = (delay: number) => ({
 })
 
 export default function Hero() {
+  const { t } = useLang()
   const contentRef = useRef(null)
   const videoRef   = useRef<HTMLVideoElement>(null)
   const isInView   = useInView(contentRef, { once: true, amount: 'some' })
 
   useScrollVideo(videoRef)
 
+  const navItems = [
+    { label: t.nav.home,     href: '#hero'      },
+    { label: t.nav.services, href: '#servicios' },
+    { label: t.nav.clients,  href: '#clientes'  },
+    { label: t.nav.art,      href: '#arte'      },
+    { label: t.nav.contact,  href: '#contactos' },
+  ]
+
   return (
     <section id="hero" className="h-screen p-4 md:p-6">
       <div className="relative w-full h-full rounded-2xl md:rounded-[2rem] overflow-hidden">
 
-        {/* Background video — plays while scrolling, pauses when still */}
         <video
           ref={videoRef}
           className="absolute inset-0 w-full h-full object-cover"
-          loop
-          muted
-          playsInline
+          loop muted playsInline
           src="/hero-video.mp4"
         />
-
-        {/* Overlays */}
         <div className="noise-overlay absolute inset-0 opacity-[0.7] mix-blend-overlay pointer-events-none z-10" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60 z-10" />
 
         {/* Navbar */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20">
-          <nav className="bg-black rounded-b-2xl md:rounded-b-3xl px-4 py-2 md:px-6 flex items-center gap-4 md:gap-8">
+          <nav className="bg-black rounded-b-2xl md:rounded-b-3xl px-4 py-2 md:px-6 flex items-center gap-4 md:gap-6">
             <a href="#hero" className="shrink-0">
               <img src="/1778logo.png" alt="1778Studio" className="h-7 sm:h-8 w-auto object-contain" />
             </a>
-            <ul className="flex items-center gap-3 sm:gap-5 md:gap-8 lg:gap-10">
-              {NAV_ITEMS.map(({ label, href }) => (
-                <li key={label}>
+
+            <ul className="flex items-center gap-3 sm:gap-5 md:gap-7 lg:gap-9">
+              {navItems.map(({ label, href }) => (
+                <li key={href}>
                   <a
                     href={href}
                     className="text-[10px] sm:text-xs md:text-sm transition-colors duration-200"
@@ -57,6 +62,12 @@ export default function Hero() {
                 </li>
               ))}
             </ul>
+
+            {/* Divider + Language switch */}
+            <div className="flex items-center gap-3 ml-1">
+              <div className="w-px h-4 bg-white/10" />
+              <LangSwitch />
+            </div>
           </nav>
         </div>
 
@@ -72,8 +83,8 @@ export default function Hero() {
             >
               <WordsPullUpMultiStyle
                 segments={[
-                  { text: 'Creative', className: 'font-medium' },
-                  { text: 'Agency',   className: 'font-serif italic font-normal' },
+                  { text: t.hero.h1, className: 'font-medium' },
+                  { text: t.hero.h2, className: 'font-serif italic font-normal' },
                 ]}
               />
             </h1>
@@ -86,7 +97,7 @@ export default function Hero() {
               className="text-primary/70 text-xs sm:text-sm md:text-base max-w-xs lg:text-right"
               style={{ lineHeight: 1.2 }}
             >
-              Agencia multimedia especializada en diseño de experiencias web. Accesibles, usables y creativas.
+              {t.hero.description}
             </motion.p>
 
             <motion.a
@@ -95,7 +106,7 @@ export default function Hero() {
               animate={isInView ? { y: 0, opacity: 1 } : { y: 20, opacity: 0 }}
               className="group inline-flex items-center gap-2 hover:gap-3 transition-all duration-300 bg-primary rounded-full pl-5 pr-1 py-1 font-medium text-sm sm:text-base text-black"
             >
-              Contáctanos
+              {t.hero.cta}
               <span className="bg-black rounded-full w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
                 <ArrowRight className="w-4 h-4 text-[#DEDBC8]" />
               </span>

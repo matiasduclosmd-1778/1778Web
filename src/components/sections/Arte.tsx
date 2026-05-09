@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, type RefObject } from 'react'
 import { motion, AnimatePresence, useDragControls } from 'framer-motion'
 import { FILES, thumb, full } from '@/data/portfolio'
 import type { FileItem } from '@/types'
+import { useLang } from '@/contexts/LangContext'
 
 // ── Lightbox ──────────────────────────────────────────────────────────────
 
@@ -154,6 +155,7 @@ function FileIcon({ file, isSelected, zIndex, desktopRef, onPointerDown, onDoubl
 // ── Section ───────────────────────────────────────────────────────────────
 
 export default function Arte() {
+  const { t } = useLang()
   const desktopRef              = useRef<HTMLDivElement>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [openFile, setOpenFile] = useState<FileItem | null>(null)
@@ -171,11 +173,6 @@ export default function Arte() {
   return (
     <section id="arte" className="bg-black py-16 px-4 md:px-8">
       <div className="max-w-7xl mx-auto">
-
-        <div className="flex items-center justify-between mb-6">
-          <p className="text-primary text-[10px] sm:text-xs tracking-widest uppercase">Portfolio</p>
-          <p className="text-gray-600 text-[10px] sm:text-xs">{FILES.length} works</p>
-        </div>
 
         {/* Desktop frame */}
         <div
@@ -201,11 +198,47 @@ export default function Arte() {
             />
             <div className="bg-noise absolute inset-0 opacity-[0.07] pointer-events-none" />
 
+            {/* Background watermark typography */}
+            <div
+              className="absolute inset-0 pointer-events-none select-none overflow-hidden flex flex-col justify-center"
+              style={{
+                paddingLeft: '6%',
+                paddingBottom: '2%',
+                maskImage: 'radial-gradient(ellipse 88% 75% at 42% 52%, black 20%, transparent 100%)',
+                WebkitMaskImage: 'radial-gradient(ellipse 88% 75% at 42% 52%, black 20%, transparent 100%)',
+              }}
+            >
+              {/* "Art" — Almarai light */}
+              <div
+                className="font-light leading-none tracking-[-0.05em]"
+                style={{
+                  fontSize: 162,
+                  color: 'rgba(222,219,200,0.065)',
+                  lineHeight: 0.82,
+                }}
+              >
+                Art
+              </div>
+              {/* "& Works" — Instrument Serif italic */}
+              <div
+                className="font-serif italic leading-none tracking-[-0.03em]"
+                style={{
+                  fontSize: 142,
+                  color: 'rgba(222,219,200,0.065)',
+                  lineHeight: 0.88,
+                  paddingLeft: '0.38em',
+                  marginTop: '0.04em',
+                }}
+              >
+                & Works
+              </div>
+            </div>
+
             <p
               className="absolute bottom-3 right-4 select-none pointer-events-none text-[9px]"
               style={{ color: 'rgba(255,255,255,0.1)' }}
             >
-              Double-click to open · Drag to move
+              {t.arte.hint}
             </p>
 
             {FILES.map((file) => (
@@ -250,7 +283,7 @@ export default function Arte() {
               </div>
               <div className="w-px h-5" style={{ background: 'rgba(255,255,255,0.1)' }} />
               <span className="text-sm pr-1" style={{ color: 'rgba(222,219,200,0.4)' }}>
-                2026 works
+                {t.arte.works}
               </span>
             </motion.div>
           </div>

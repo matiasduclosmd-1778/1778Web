@@ -2,8 +2,10 @@ import { motion, useInView } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import { useRef } from 'react'
 import { WordsPullUp } from '@/components/ui'
+import { useLang } from '@/contexts/LangContext'
 
 export default function Contactos() {
+  const { t } = useLang()
   const ref      = useRef(null)
   const isInView = useInView(ref, { once: true, amount: 'some' })
 
@@ -11,13 +13,15 @@ export default function Contactos() {
     <section id="contactos" className="bg-black py-28 px-4 md:px-8 border-t border-white/5">
       <div className="max-w-3xl mx-auto text-center">
 
-        <p className="text-primary text-[10px] sm:text-xs mb-8 tracking-widest uppercase">Contacto</p>
+        <p className="text-primary text-[10px] sm:text-xs mb-8 tracking-widest uppercase">
+          {t.contactos.label}
+        </p>
 
         <h2
           className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-medium leading-[0.9] tracking-[-0.04em] mb-8"
           style={{ color: '#E1E0CC' }}
         >
-          <WordsPullUp text="Hablemos." />
+          <WordsPullUp text={t.contactos.heading} />
         </h2>
 
         <div ref={ref}>
@@ -28,7 +32,7 @@ export default function Contactos() {
             className="text-gray-400 text-sm md:text-base mb-10 max-w-md mx-auto"
             style={{ lineHeight: 1.6 }}
           >
-            ¿Tenés un proyecto en mente? Contanos sobre él y trabajemos juntos para hacerlo realidad.
+            {t.contactos.body}
           </motion.p>
 
           <motion.a
@@ -50,7 +54,7 @@ export default function Contactos() {
             transition={{ duration: 0.7, delay: 0.55 }}
             className="text-gray-600 text-xs mt-16"
           >
-            © 2026 1778Studio. Todos los derechos reservados.
+            {t.contactos.footer}
           </motion.p>
         </div>
 

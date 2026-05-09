@@ -1,3 +1,5 @@
+import { useLang } from '@/contexts/LangContext'
+
 const LOGOS = [
   { name: 'BNA',    src: '/clientes/bna-logo.png'    },
   { name: 'Bola',   src: '/clientes/bola-logo.png'   },
@@ -6,18 +8,17 @@ const LOGOS = [
   { name: 'Viamo',  src: '/clientes/viamo-logo.png'  },
 ]
 
-// Dos copias: la animación mueve -50% del total → loop perfecto sin salto
 const TRACK = [...LOGOS, ...LOGOS]
 
 export default function Clientes() {
+  const { t } = useLang()
+
   return (
     <section id="clientes" className="bg-black py-16">
-
       <p className="text-center text-primary text-[10px] sm:text-xs tracking-widest uppercase mb-10 px-4">
-        Clientes frecuentes
+        {t.clientes.label}
       </p>
 
-      {/* Fade en los bordes */}
       <div
         className="overflow-hidden"
         style={{
@@ -25,26 +26,11 @@ export default function Clientes() {
           WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%)',
         }}
       >
-        {/* Track — usa inline style para garantizar la animación */}
-        <div
-          style={{
-            display: 'flex',
-            width: 'max-content',
-            animation: 'marquee 20s linear infinite',
-          }}
-        >
+        <div style={{ display: 'flex', width: 'max-content', animation: 'marquee 20s linear infinite' }}>
           {TRACK.map((logo, i) => (
             <div
               key={i}
-              style={{
-                width: 130,
-                height: 48,
-                flexShrink: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 48px',
-              }}
+              style={{ width: 130, height: 48, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 48px' }}
             >
               <img
                 src={logo.src}
@@ -56,7 +42,6 @@ export default function Clientes() {
           ))}
         </div>
       </div>
-
     </section>
   )
 }
