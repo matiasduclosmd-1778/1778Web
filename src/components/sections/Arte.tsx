@@ -309,7 +309,7 @@ export default function Arte() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.85, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             >
-              Mi portfolio
+              Portfolio
               <span className="bg-black rounded-full w-8 h-8 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
                 <ArrowRight className="w-3.5 h-3.5 text-[#DEDBC8]" />
               </span>
