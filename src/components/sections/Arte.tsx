@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, type RefObject } from 'react'
 import { motion, AnimatePresence, useDragControls } from 'framer-motion'
-import { X } from 'lucide-react'
+import { X, ArrowRight } from 'lucide-react'
 import { FILES, thumb, full } from '@/data/portfolio'
 import type { FileItem } from '@/types'
 import { useLang } from '@/contexts/LangContext'
@@ -279,7 +279,7 @@ export default function Arte() {
           </div>
 
           {/* Dock */}
-          <div className="mt-3 flex justify-center">
+          <div className="mt-3 flex items-center justify-center gap-3">
             <motion.div
               className="inline-flex items-center gap-3 rounded-2xl px-4 py-[10px]"
               style={{
@@ -299,6 +299,21 @@ export default function Arte() {
                 {t.arte.works}
               </span>
             </motion.div>
+
+            <motion.a
+              href="https://www.instagram.com/1778studio/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group inline-flex items-center gap-2 hover:gap-3 transition-all duration-300 bg-primary rounded-full pl-4 pr-1 py-1 font-medium text-sm text-black"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.85, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            >
+              Mi portfolio
+              <span className="bg-black rounded-full w-8 h-8 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
+                <ArrowRight className="w-3.5 h-3.5 text-[#DEDBC8]" />
+              </span>
+            </motion.a>
           </div>
         </div>
 
