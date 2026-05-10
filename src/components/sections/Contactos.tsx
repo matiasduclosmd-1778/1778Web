@@ -1,8 +1,33 @@
-import { motion, useInView } from 'framer-motion'
+import { motion, useInView, AnimatePresence } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
-import { useRef } from 'react'
-import { WordsPullUp } from '@/components/ui'
+import { useRef, useState, useEffect } from 'react'
 import { useLang } from '@/contexts/LangContext'
+
+const WORDS = ['Hablemos', "Let's talk", 'Parlons', '聊聊吧', 'Reden wir', 'Поговорим']
+
+function CyclingHeading() {
+  const [index, setIndex] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setIndex(i => (i + 1) % WORDS.length), 500)
+    return () => clearInterval(id)
+  }, [])
+  return (
+    <div className="relative h-[1.05em] overflow-hidden">
+      <AnimatePresence mode="popLayout">
+        <motion.span
+          key={index}
+          className="absolute inset-0 flex items-center justify-center"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {WORDS[index]}
+        </motion.span>
+      </AnimatePresence>
+    </div>
+  )
+}
 
 export default function Contactos() {
   const { t } = useLang()
@@ -21,7 +46,7 @@ export default function Contactos() {
           className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-medium leading-[0.9] tracking-[-0.04em] mb-8"
           style={{ color: '#E1E0CC' }}
         >
-          <WordsPullUp text={t.contactos.heading} />
+          <CyclingHeading />
         </h2>
 
         <div ref={ref}>
@@ -36,13 +61,13 @@ export default function Contactos() {
           </motion.p>
 
           <motion.a
-            href="mailto:hola@1778studio.com"
+            href="mailto:1778studioba@gmail.com"
             initial={{ y: 20, opacity: 0 }}
             animate={isInView ? { y: 0, opacity: 1 } : {}}
             transition={{ duration: 0.7, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
             className="group inline-flex items-center gap-2 hover:gap-3 transition-all duration-300 bg-primary rounded-full pl-6 pr-1 py-1 font-medium text-sm sm:text-base text-black"
           >
-            hola@1778studio.com
+            1778studioba@gmail.com
             <span className="bg-black rounded-full w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
               <ArrowRight className="w-4 h-4 text-[#DEDBC8]" />
             </span>

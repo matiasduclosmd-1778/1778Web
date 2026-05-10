@@ -1,6 +1,6 @@
 import { motion, useInView, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Menu, X } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useLang } from '@/contexts/LangContext'
 import { useScrollVideo } from '@/hooks/useScrollVideo'
 import { scrollTo } from '@/hooks/useLenis'
@@ -18,8 +18,16 @@ export default function Hero() {
   const videoRef    = useRef<HTMLVideoElement>(null)
   const isInView    = useInView(contentRef, { once: true, amount: 'some' })
   const [menuOpen, setMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  const [hoveredNav, setHoveredNav] = useState<string | null>(null)
 
   useScrollVideo(videoRef)
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 80)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   const navItems = [
     { label: t.nav.home,     href: '#hero'      },
@@ -32,6 +40,66 @@ export default function Hero() {
   return (
     <section id="hero" className="relative h-screen p-4 md:p-6">
 
+        {/* ── Floating navbar (on scroll) ───────────────────────── */}
+        <AnimatePresence>
+          {scrolled && (
+            <motion.div
+              className="fixed z-50"
+              style={{ top: 16, left: '50%', x: '-50%' }}
+              initial={{ opacity: 0, y: -32, scaleX: 0.92, scaleY: 0.8 }}
+              animate={{ opacity: 1, y: 0, scaleX: 1, scaleY: 1 }}
+              exit={{ opacity: 0, y: -24, scaleX: 0.94, scaleY: 0.85 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 22, mass: 0.8 }}
+            >
+              <nav
+                className="flex items-center gap-3 md:gap-6 px-5 py-[10px] md:px-6 md:py-2 rounded-full bg-black"
+                style={{
+                  border: '0.5px solid rgba(255,255,255,0.1)',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                }}
+              >
+                <a href="#hero" className="shrink-0" onClick={(e) => { e.preventDefault(); scrollTo(0) }}>
+                  <img src="/1778logo.png" alt="1778Studio" className="h-8 w-auto object-contain" />
+                </a>
+                <ul className="hidden md:flex items-center gap-1">
+                  {navItems.map(({ label, href }) => (
+                    <li key={href} className="relative">
+                      {hoveredNav === href && (
+                        <motion.div
+                          layoutId="nav-pill"
+                          className="absolute inset-0 rounded-full bg-white"
+                          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                        />
+                      )}
+                      <a
+                        href={href}
+                        className="relative z-10 block px-3 py-1 text-xs md:text-sm whitespace-nowrap transition-colors duration-150"
+                        style={{ color: hoveredNav === href ? '#000' : 'rgba(225,224,204,0.8)' }}
+                        onMouseEnter={() => setHoveredNav(href)}
+                        onMouseLeave={() => setHoveredNav(null)}
+                        onClick={(e) => { e.preventDefault(); scrollTo(href) }}
+                      >
+                        {label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex items-center gap-2 md:gap-3">
+                  <div className="hidden md:block w-px h-4 bg-white/10" />
+                  <LangSwitch />
+                  <button
+                    className="md:hidden flex items-center justify-center w-8 h-8 rounded-full border border-white/10"
+                    onClick={() => setMenuOpen(true)}
+                    aria-label="Abrir menú"
+                  >
+                    <Menu className="w-4 h-4" style={{ color: 'rgba(222,219,200,0.8)' }} />
+                  </button>
+                </div>
+              </nav>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* ── Navbar ────────────────────────────────────────────── */}
         <div className="absolute top-4 md:top-6 left-1/2 -translate-x-1/2 z-20">
           <nav className="bg-black rounded-b-2xl md:rounded-b-3xl px-5 py-[10px] md:px-6 md:py-2 flex items-center gap-3 md:gap-6">
@@ -41,15 +109,22 @@ export default function Hero() {
             </a>
 
             {/* Desktop links — hidden on mobile */}
-            <ul className="hidden md:flex items-center gap-5 lg:gap-9">
+            <ul className="hidden md:flex items-center gap-1">
               {navItems.map(({ label, href }) => (
-                <li key={href}>
+                <li key={href} className="relative">
+                  {hoveredNav === href && (
+                    <motion.div
+                      layoutId="nav-pill-static"
+                      className="absolute inset-0 rounded-full bg-white"
+                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    />
+                  )}
                   <a
                     href={href}
-                    className="text-xs md:text-sm transition-colors duration-200 whitespace-nowrap"
-                    style={{ color: 'rgba(225, 224, 204, 0.8)' }}
-                    onMouseEnter={(e) => (e.currentTarget.style.color = '#E1E0CC')}
-                    onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(225, 224, 204, 0.8)')}
+                    className="relative z-10 block px-3 py-1 text-xs md:text-sm whitespace-nowrap transition-colors duration-150"
+                    style={{ color: hoveredNav === href ? '#000' : 'rgba(225,224,204,0.8)' }}
+                    onMouseEnter={() => setHoveredNav(href)}
+                    onMouseLeave={() => setHoveredNav(null)}
                     onClick={(e) => { e.preventDefault(); scrollTo(href) }}
                   >
                     {label}
@@ -168,8 +243,9 @@ export default function Hero() {
             </motion.p>
 
             <motion.a
-              href="#contactos"
-              onClick={(e) => { e.preventDefault(); scrollTo('#contactos') }}
+              href="https://api.whatsapp.com/send/?phone=5491132192293&text&type=phone_number&app_absent=0"
+              target="_blank"
+              rel="noopener noreferrer"
               {...fadeUp(0.7)}
               animate={isInView ? { y: 0, opacity: 1 } : { y: 20, opacity: 0 }}
               className="group inline-flex items-center gap-2 hover:gap-3 transition-all duration-300 bg-primary rounded-full pl-4 sm:pl-5 pr-1 py-1 font-medium text-sm sm:text-base text-black"
