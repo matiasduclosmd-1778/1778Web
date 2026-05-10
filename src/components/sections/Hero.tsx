@@ -109,13 +109,13 @@ export default function Hero() {
               </div>
 
               {/* Nav links */}
-              <nav className="flex-1 flex flex-col justify-center px-6 gap-8">
+              <nav className="flex-1 flex flex-col justify-center px-6 gap-6">
                 {navItems.map(({ label, href }, i) => (
                   <motion.a
                     key={href}
                     href={href}
                     onClick={(e) => { e.preventDefault(); setMenuOpen(false); scrollTo(href) }}
-                    className="text-[5.5rem] font-medium leading-none tracking-[-0.02em]"
+                    className="text-[2.8rem] font-medium leading-none tracking-[-0.02em]"
                     style={{ color: 'rgba(222,219,200,0.6)' }}
                     initial={{ opacity: 0, x: -16 }}
                     animate={{ opacity: 1, x: 0 }}
