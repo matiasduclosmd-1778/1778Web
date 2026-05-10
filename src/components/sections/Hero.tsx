@@ -73,7 +73,7 @@ export default function Hero() {
               <div className="hidden md:block w-px h-4 bg-white/10" />
               <LangSwitch />
               <button
-                className="md:hidden flex items-center justify-center w-9 h-9 rounded-full border border-white/10 ml-1"
+                className="md:hidden flex items-center justify-center w-8 h-8 rounded-full border border-white/10"
                 onClick={() => setMenuOpen(true)}
                 aria-label="Abrir menú"
               >
