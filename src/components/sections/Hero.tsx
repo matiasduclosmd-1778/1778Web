@@ -44,10 +44,10 @@ export default function Hero() {
 
         {/* ── Navbar ────────────────────────────────────────────── */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20">
-          <nav className="bg-black rounded-b-2xl md:rounded-b-3xl px-4 py-2 md:px-6 flex items-center gap-3 md:gap-6">
+          <nav className="bg-black rounded-b-2xl md:rounded-b-3xl px-5 py-3 md:px-6 md:py-2 flex items-center gap-3 md:gap-6">
             {/* Logo */}
             <a href="#hero" className="shrink-0" onClick={(e) => { e.preventDefault(); scrollTo(0) }}>
-              <img src="/1778logo.png" alt="1778Studio" className="h-7 sm:h-8 w-auto object-contain" />
+              <img src="/1778logo.png" alt="1778Studio" className="h-10 md:h-8 w-auto object-contain" />
             </a>
 
             {/* Desktop links — hidden on mobile */}
@@ -73,11 +73,11 @@ export default function Hero() {
               <div className="hidden md:block w-px h-4 bg-white/10" />
               <LangSwitch />
               <button
-                className="md:hidden flex items-center justify-center w-7 h-7 rounded-full border border-white/10 ml-1"
+                className="md:hidden flex items-center justify-center w-11 h-11 rounded-full border border-white/10 ml-1"
                 onClick={() => setMenuOpen(true)}
                 aria-label="Abrir menú"
               >
-                <Menu className="w-3.5 h-3.5" style={{ color: 'rgba(222,219,200,0.8)' }} />
+                <Menu className="w-5 h-5" style={{ color: 'rgba(222,219,200,0.8)' }} />
               </button>
             </div>
           </nav>

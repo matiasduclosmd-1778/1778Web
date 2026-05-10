@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, type RefObject } from 'react'
 import { motion, AnimatePresence, useDragControls } from 'framer-motion'
+import { X } from 'lucide-react'
 import { FILES, thumb, full } from '@/data/portfolio'
 import type { FileItem } from '@/types'
 import { useLang } from '@/contexts/LangContext'
@@ -29,9 +30,11 @@ function Lightbox({ file, desktopRef, onClose }: LightboxProps) {
       <motion.div
         className="absolute z-[999] rounded-2xl overflow-hidden"
         style={{
-          width: 480,
-          left: 'calc(50% - 240px)',
-          top: 'calc(50% - 210px)',
+          width: 'min(480px, calc(100% - 24px))',
+          left: '50%',
+          top: '50%',
+          translateX: '-50%',
+          translateY: '-50%',
           background: '#1c1c1e',
           border: '0.5px solid rgba(255,255,255,0.1)',
           boxShadow: '0 32px 80px rgba(0,0,0,0.85), 0 0 0 0.5px rgba(255,255,255,0.05)',
@@ -70,10 +73,20 @@ function Lightbox({ file, desktopRef, onClose }: LightboxProps) {
           </div>
           <span
             className="flex-1 text-center text-[12px] font-medium"
-            style={{ color: 'rgba(255,255,255,0.35)', paddingRight: 45 }}
+            style={{ color: 'rgba(255,255,255,0.35)' }}
           >
             {file.name}
           </span>
+          {/* Close button — mobile only */}
+          <button
+            className="md:hidden flex items-center justify-center w-7 h-7 rounded-full flex-shrink-0"
+            style={{ background: 'rgba(255,255,255,0.08)' }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onClose() }}
+            aria-label="Cerrar"
+          >
+            <X className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.6)' }} />
+          </button>
         </div>
 
         <img
