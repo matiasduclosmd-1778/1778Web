@@ -18,7 +18,7 @@ export default function Contactos() {
         </p>
 
         <h2
-          className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-medium leading-[0.9] tracking-[-0.04em] mb-8"
+          className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-medium leading-[0.9] tracking-[-0.04em] mb-8"
           style={{ color: '#E1E0CC' }}
         >
           <WordsPullUp text={t.contactos.heading} />

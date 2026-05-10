@@ -171,7 +171,7 @@ export default function Arte() {
     setZOrder(prev => [...prev.filter(i => i !== id), id])
 
   return (
-    <section id="arte" className="bg-black py-16 px-4 md:px-8">
+    <section id="arte" className="bg-black py-12 md:py-16 px-3 sm:px-4 md:px-8">
       <div className="max-w-7xl mx-auto">
 
         {/* Desktop frame */}
@@ -186,8 +186,8 @@ export default function Arte() {
           {/* Screen */}
           <div
             ref={desktopRef}
-            className="relative rounded-2xl overflow-hidden"
-            style={{ height: 520, background: '#141414' }}
+            className="relative rounded-2xl overflow-hidden h-[340px] sm:h-[420px] md:h-[500px] lg:h-[520px]"
+            style={{ background: '#141414' }}
             onClick={() => setSelected(null)}
           >
             <div

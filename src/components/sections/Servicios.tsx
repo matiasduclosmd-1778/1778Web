@@ -72,13 +72,13 @@ function ServiceCard({ service, delay }: { service: ServiceItem; delay: number }
             {/* Service name — dim base + clip-sweep bright layer */}
             <div className="relative mb-5 md:mb-6">
               <h3
-                className="text-4xl md:text-5xl lg:text-[3.4rem] font-normal leading-[0.92] tracking-[-0.025em]"
+                className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.4rem] font-normal leading-[0.92] tracking-[-0.025em]"
                 style={{ color: 'rgba(222,219,200,0.16)' }}
               >
                 {service.name}
               </h3>
               <motion.h3
-                className="absolute inset-0 text-4xl md:text-5xl lg:text-[3.4rem] font-normal leading-[0.92] tracking-[-0.025em] pointer-events-none"
+                className="absolute inset-0 text-3xl sm:text-4xl md:text-5xl lg:text-[3.4rem] font-normal leading-[0.92] tracking-[-0.025em] pointer-events-none"
                 style={{ color: 'rgba(222,219,200,0.88)' }}
                 variants={sweepVariants}
                 transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
@@ -162,13 +162,13 @@ export default function Servicios() {
   const chars = st.body.split('')
 
   return (
-    <section id="servicios" className="bg-black py-24 px-4 md:px-10 lg:px-16">
+    <section id="servicios" className="bg-black py-16 md:py-24 px-4 md:px-10 lg:px-16">
       <div className="max-w-7xl mx-auto">
 
         {/* Spotlight heading */}
         <div
           ref={headingRef}
-          className="relative mb-20 md:mb-24 select-none"
+          className="relative mb-12 md:mb-24 select-none"
           style={{ cursor: 'none' }}
           onMouseMove={handleMouseMove}
           onMouseEnter={handleMouseEnter}

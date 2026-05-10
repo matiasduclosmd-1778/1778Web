@@ -23,6 +23,7 @@ pnpm-debug.log*
 
 # macOS
 .DS_Store
+**/.DS_Store
 
 # TypeScript
 *.tsbuildinfo
