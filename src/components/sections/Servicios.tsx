@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, useEffect } from 'react'
 import {
   motion, useScroll,
   useMotionValue, useSpring, useMotionTemplate,
@@ -27,7 +27,7 @@ const tagVariants = {
 
 // ── Service card ──────────────────────────────────────────────────────────
 
-function ServiceCard({ service, delay }: { service: ServiceItem; delay: number }) {
+function ServiceCard({ service, delay, isTouch }: { service: ServiceItem; delay: number; isTouch: boolean }) {
   return (
     <motion.div
       className="relative border-t border-white/[0.06] overflow-hidden"
@@ -38,7 +38,9 @@ function ServiceCard({ service, delay }: { service: ServiceItem; delay: number }
     >
       <motion.div
         className="relative py-9 md:py-11 cursor-default"
-        initial="rest" whileHover="hover" animate="rest"
+        initial="rest"
+        whileHover={isTouch ? undefined : 'hover'}
+        animate={isTouch ? 'hover' : 'rest'}
       >
         {/* Sweep background */}
         <motion.div
@@ -126,9 +128,18 @@ function HeadingContent({ h1, h2, h3, h4 }: { h1: string; h2: string; h3: string
 
 // ── Main section ──────────────────────────────────────────────────────────
 
+function useIsTouch() {
+  const [isTouch, setIsTouch] = useState(false)
+  useEffect(() => {
+    setIsTouch(window.matchMedia('(hover: none)').matches)
+  }, [])
+  return isTouch
+}
+
 export default function Servicios() {
   const { t } = useLang()
   const st = t.servicios
+  const isTouch = useIsTouch()
 
   const headingRef = useRef<HTMLDivElement>(null)
   const bodyRef    = useRef(null)
@@ -220,7 +231,7 @@ export default function Servicios() {
         {/* Services 2×2 grid */}
         <div className="mt-16 md:mt-20 grid grid-cols-1 md:grid-cols-2 md:gap-x-16 lg:gap-x-24">
           {st.services.map((service, i) => (
-            <ServiceCard key={service.number} service={service} delay={i * 0.1} />
+            <ServiceCard key={service.number} service={service} delay={i * 0.1} isTouch={isTouch} />
           ))}
         </div>
 
