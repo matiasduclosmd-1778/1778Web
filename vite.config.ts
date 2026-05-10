@@ -9,4 +9,16 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor':   ['react', 'react-dom'],
+          'motion-vendor':  ['framer-motion'],
+          'lenis-vendor':   ['lenis'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600,
+  },
 })

@@ -5,17 +5,22 @@ export function useScrollVideo(videoRef: RefObject<HTMLVideoElement | null>) {
     const video = videoRef.current
     if (!video) return
 
+    let rafId: number
     let stopTimeout: ReturnType<typeof setTimeout>
 
     const onScroll = () => {
-      video.play().catch(() => {})
-      clearTimeout(stopTimeout)
-      stopTimeout = setTimeout(() => video.pause(), 150)
+      cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(() => {
+        video.play().catch(() => {})
+        clearTimeout(stopTimeout)
+        stopTimeout = setTimeout(() => video.pause(), 200)
+      })
     }
 
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => {
       window.removeEventListener('scroll', onScroll)
+      cancelAnimationFrame(rafId)
       clearTimeout(stopTimeout)
     }
   }, [])

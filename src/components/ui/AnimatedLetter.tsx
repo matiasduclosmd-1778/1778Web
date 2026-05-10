@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { motion, useTransform, type MotionValue } from 'framer-motion'
 
 interface AnimatedLetterProps {
@@ -6,7 +7,7 @@ interface AnimatedLetterProps {
   charProgress: number
 }
 
-export default function AnimatedLetter({ char, scrollYProgress, charProgress }: AnimatedLetterProps) {
+const AnimatedLetter = memo(function AnimatedLetter({ char, scrollYProgress, charProgress }: AnimatedLetterProps) {
   const opacity = useTransform(
     scrollYProgress,
     [charProgress - 0.1, charProgress + 0.05],
@@ -20,4 +21,6 @@ export default function AnimatedLetter({ char, scrollYProgress, charProgress }: 
       {char}
     </motion.span>
   )
-}
+})
+
+export default AnimatedLetter

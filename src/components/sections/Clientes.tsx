@@ -37,6 +37,7 @@ export default function Clientes() {
                 alt={logo.name}
                 className="max-w-full max-h-full object-contain brightness-0 invert opacity-50 hover:opacity-100 transition-opacity duration-300"
                 draggable={false}
+                loading="lazy"
               />
             </div>
           ))}

@@ -7,12 +7,24 @@ const WORDS = ['Hablemos', "Let's talk", 'Parlons', '聊聊吧', 'Reden wir', '�
 
 function CyclingHeading() {
   const [index, setIndex] = useState(0)
+  const ref = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
-    const id = setInterval(() => setIndex(i => (i + 1) % WORDS.length), 500)
-    return () => clearInterval(id)
+    const el = ref.current
+    if (!el) return
+    let id: ReturnType<typeof setInterval>
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        id = setInterval(() => setIndex(i => (i + 1) % WORDS.length), 500)
+      } else {
+        clearInterval(id)
+      }
+    })
+    observer.observe(el)
+    return () => { observer.disconnect(); clearInterval(id) }
   }, [])
   return (
-    <div className="relative h-[1.05em] overflow-hidden">
+    <div ref={ref} className="relative h-[1.05em] overflow-hidden">
       <AnimatePresence mode="popLayout">
         <motion.span
           key={index}
@@ -73,21 +85,25 @@ export default function Contactos() {
             </span>
           </motion.a>
 
-          <motion.a
-            href="https://www.instagram.com/1778studio/"
-            target="_blank"
-            rel="noopener noreferrer"
+          <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={isInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.7, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            className="inline-flex items-center gap-2 mt-6 text-sm transition-colors duration-200"
-            style={{ color: 'rgba(222,219,200,0.4)' }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(222,219,200,0.85)')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(222,219,200,0.4)')}
+            className="flex justify-center mt-8"
           >
-            <Instagram className="w-4 h-4" />
-            Check my instagram
-          </motion.a>
+            <a
+              href="https://www.instagram.com/1778studio/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-base transition-colors duration-200"
+              style={{ color: 'rgba(222,219,200,0.4)' }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(222,219,200,0.85)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(222,219,200,0.4)')}
+            >
+              <Instagram className="w-5 h-5" />
+              Check my instagram
+            </a>
+          </motion.div>
 
           <motion.p
             initial={{ opacity: 0 }}

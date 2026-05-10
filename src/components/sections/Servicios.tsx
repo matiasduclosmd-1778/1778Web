@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react'
+import { useRef, useState, useCallback, useEffect, memo } from 'react'
 import {
   motion, useScroll,
   useMotionValue, useSpring, useMotionTemplate,
@@ -27,7 +27,7 @@ const tagVariants = {
 
 // ── Service card ──────────────────────────────────────────────────────────
 
-function ServiceCard({ service, delay, isTouch }: { service: ServiceItem; delay: number; isTouch: boolean }) {
+const ServiceCard = memo(function ServiceCard({ service, delay, isTouch }: { service: ServiceItem; delay: number; isTouch: boolean }) {
   return (
     <motion.div
       className="relative border-t border-white/[0.06] overflow-hidden"
@@ -109,7 +109,7 @@ function ServiceCard({ service, delay, isTouch }: { service: ServiceItem; delay:
       </motion.div>
     </motion.div>
   )
-}
+})
 
 // ── Heading (shared by dim + bright layers) ───────────────────────────────
 
@@ -190,7 +190,7 @@ export default function Servicios() {
           </div>
           <motion.div
             className="absolute inset-0 pointer-events-none"
-            style={{ color: '#E1E0CC', maskImage, WebkitMaskImage: maskImage }}
+            style={{ color: '#E1E0CC', maskImage, WebkitMaskImage: maskImage, willChange: 'mask-image' }}
             aria-hidden
           >
             <HeadingContent h1={st.h1} h2={st.h2} h3={st.h3} h4={st.h4} />
