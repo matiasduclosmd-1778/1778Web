@@ -30,20 +30,10 @@ export default function Hero() {
   ]
 
   return (
-    <section id="hero" className="h-screen p-4 md:p-6">
-      <div className="relative w-full h-full rounded-2xl md:rounded-[2rem] overflow-hidden">
-
-        <video
-          ref={videoRef}
-          className="absolute inset-0 w-full h-full object-cover"
-          loop muted playsInline
-          src="/hero-video.mp4"
-        />
-        <div className="noise-overlay absolute inset-0 opacity-[0.7] mix-blend-overlay pointer-events-none z-10" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60 z-10" />
+    <section id="hero" className="relative h-screen p-4 md:p-6">
 
         {/* ── Navbar ────────────────────────────────────────────── */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20">
+        <div className="absolute top-4 md:top-6 left-1/2 -translate-x-1/2 z-20">
           <nav className="bg-black rounded-b-2xl md:rounded-b-3xl px-5 py-[10px] md:px-6 md:py-2 flex items-center gap-3 md:gap-6">
             {/* Logo */}
             <a href="#hero" className="shrink-0" onClick={(e) => { e.preventDefault(); scrollTo(0) }}>
@@ -136,6 +126,17 @@ export default function Hero() {
             </motion.div>
           )}
         </AnimatePresence>
+
+      <div className="relative w-full h-full rounded-2xl md:rounded-[2rem] overflow-hidden">
+
+        <video
+          ref={videoRef}
+          className="absolute inset-0 w-full h-full object-cover"
+          loop muted playsInline
+          src="/hero-video.mp4"
+        />
+        <div className="noise-overlay absolute inset-0 opacity-[0.7] mix-blend-overlay pointer-events-none z-10" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60 z-10" />
 
         {/* ── Hero content ──────────────────────────────────────── */}
         <div
