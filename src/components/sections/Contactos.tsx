@@ -1,5 +1,5 @@
 import { motion, useInView, AnimatePresence } from 'framer-motion'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Instagram } from 'lucide-react'
 import { useRef, useState, useEffect } from 'react'
 import { useLang } from '@/contexts/LangContext'
 
@@ -71,6 +71,22 @@ export default function Contactos() {
             <span className="bg-black rounded-full w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
               <ArrowRight className="w-4 h-4 text-[#DEDBC8]" />
             </span>
+          </motion.a>
+
+          <motion.a
+            href="https://www.instagram.com/1778studio/"
+            target="_blank"
+            rel="noopener noreferrer"
+            initial={{ opacity: 0, y: 10 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.7, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="inline-flex items-center gap-2 mt-6 text-sm transition-colors duration-200"
+            style={{ color: 'rgba(222,219,200,0.4)' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(222,219,200,0.85)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(222,219,200,0.4)')}
+          >
+            <Instagram className="w-4 h-4" />
+            Check my instagram
           </motion.a>
 
           <motion.p
