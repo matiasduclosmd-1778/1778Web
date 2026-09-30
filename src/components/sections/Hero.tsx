@@ -135,7 +135,7 @@ export default function Hero() {
                 }}
               >
                 <a href="#hero" className="shrink-0" onClick={(e) => { e.preventDefault(); scrollTo(0) }}>
-                  <img src="/1778logo.png" alt="1778Studio" className="h-8 w-auto object-contain" />
+                  <img src="/1778-white.svg" alt="1778Studio" className="h-7 w-auto object-contain" />
                 </a>
                 <ul className="hidden md:flex items-center gap-1">
                   {navItems.map(({ label, href }) => (
@@ -181,7 +181,7 @@ export default function Hero() {
           <nav className="bg-black rounded-b-2xl md:rounded-b-3xl px-5 py-[10px] md:px-6 md:py-2 flex items-center gap-3 md:gap-6">
             {/* Logo */}
             <a href="#hero" className="shrink-0" onClick={(e) => { e.preventDefault(); scrollTo(0) }}>
-              <img src="/1778logo.png" alt="1778Studio" className="h-8 md:h-8 w-auto object-contain" />
+              <img src="/1778-white.svg" alt="1778Studio" className="h-7 w-auto object-contain" />
             </a>
 
             {/* Desktop links — hidden on mobile */}
@@ -238,7 +238,7 @@ export default function Hero() {
               {/* Top bar */}
               <div className="flex items-center justify-between px-6 pt-6 pb-4">
                 <a href="#hero" onClick={(e) => { e.preventDefault(); setMenuOpen(false); scrollTo(0) }}>
-                  <img src="/1778logo.png" alt="1778Studio" className="h-8 w-auto object-contain" />
+                  <img src="/1778-white.svg" alt="1778Studio" className="h-7 w-auto object-contain" />
                 </a>
                 <button
                   onClick={() => setMenuOpen(false)}
