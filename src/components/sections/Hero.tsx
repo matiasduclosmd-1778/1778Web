@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLang } from '@/contexts/LangContext'
 import { scrollTo, holdThenGlide, isScrollLocked } from '@/hooks/useLenis'
 import { LiquidText, PillLink } from '@/components/ui'
-import { WHATSAPP_URL } from '@/data/contact'
+import { INSTAGRAM_URL, WHATSAPP_URL } from '@/data/contact'
 import HeroFace from './HeroFace'
 import LogoMorph, { PAN_FRAC, DROP_AT, DROP_IMPACT_MS, WORKS_DROP } from './LogoMorph'
 import LateralScene from './LateralScene'
@@ -189,12 +189,27 @@ export default function Hero() {
         {/* ── Works (same card: the camera moves down onto it) ── */}
         <motion.div className="absolute inset-0 z-10 pointer-events-none" style={{ y: worksY }}>
           <ProjectsReel pos={reelPos} visible={reelVisible} preload={reelPreload} onSelect={selectProject} />
-          <motion.h2
-            className="absolute left-5 md:left-[5%] top-[16%] md:top-[18%] leading-none tracking-[-0.02em] text-[clamp(3rem,9vw,9rem)]"
-            style={{ color: '#ffffff', fontFamily: '"Geist", sans-serif', fontWeight: 700 }}
-          >
-            <LiquidText show={worksShow}>Works</LiquidText>
-          </motion.h2>
+          <div className="absolute left-5 md:left-[5%] top-[16%] md:top-[18%]">
+            <h2
+              className="leading-none tracking-[-0.02em] text-[clamp(3rem,9vw,9rem)] uppercase"
+              style={{ color: '#ffffff', fontFamily: '"Geist", sans-serif', fontWeight: 700 }}
+            >
+              <LiquidText show={worksShow}>Works</LiquidText>
+            </h2>
+            {/* Instagram, right under the title: fades up once "WORKS" has written itself */}
+            <motion.a
+              href={INSTAGRAM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block mt-3 md:mt-4 ml-[0.15em] text-white uppercase tracking-[0.02em] text-sm md:text-[clamp(1rem,1.3vw,1.4rem)] hover:opacity-70 transition-opacity duration-300"
+              initial={false}
+              animate={{ opacity: worksShow ? 1 : 0, y: worksShow ? 0 : 10 }}
+              transition={{ duration: 0.7, delay: worksShow ? 0.9 : 0, ease: [0.16, 1, 0.3, 1] }}
+              style={{ pointerEvents: worksShow ? 'auto' : 'none' }}
+            >
+              {t.hero.worksInstagram}
+            </motion.a>
+          </div>
         </motion.div>
 
         {/* ── CTAs ──────────────────────────────────────────────── */}

@@ -3,6 +3,7 @@ import { ArrowRight, Instagram } from 'lucide-react'
 import { useRef, useState, useEffect } from 'react'
 import { useLang } from '@/contexts/LangContext'
 import { LiquidText } from '@/components/ui'
+import { INSTAGRAM_URL } from '@/data/contact'
 
 const WORDS = ['Hablemos', "Let's talk", 'Parlons', '聊聊吧', 'Reden wir', 'Поговорим']
 
@@ -98,7 +99,7 @@ export default function Contactos() {
             className="flex justify-center mt-8"
           >
             <a
-              href="https://www.instagram.com/1778studio/"
+              href={INSTAGRAM_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 text-base transition-colors duration-200"

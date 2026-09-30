@@ -300,7 +300,7 @@ export default function ProjectsReel({ pos, visible, preload, onSelect }: Projec
       )}
 
       {/* The name is drawn on the canvas (so the liquid trail can smear it); this is for assistive tech */}
-      <h3 className="sr-only" aria-live="polite">{project.name}</h3>
+      <h3 className="sr-only uppercase" aria-live="polite">{project.name}</h3>
 
       {/* Dots */}
       <div

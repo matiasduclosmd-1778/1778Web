@@ -18,6 +18,8 @@ export interface Translations {
     effectLabel: string
     /** Lateral scene after the closing frame: "<prefix> <item>", the item flipping in a loop */
     lateral: { prefix: string; items: string[]; services: string[]; cta: string }
+    /** Link to Instagram under the Works title */
+    worksInstagram: string
   }
   clientes: { label: string }
   contactos: { label: string; heading: string; body: string; instagram: string; footer: string }
@@ -52,8 +54,9 @@ export const translations: Record<Lang, Translations> = {
         prefix: 'Desarrollamos',
         items: ['sistemas de diseño', 'ideas ganadoras', 'conceptos', 'frontEnd creativo'],
         services: ['UX & UI', 'Branding', 'Multimedia works', 'Atomic systems'],
-        cta: 'TRABAJEMOS JUNTOS',
+        cta: 'Trabajemos juntos',
       },
+      worksInstagram: 'Visitá nuestro Instagram',
     },
     clientes:  { label: 'Clientes frecuentes' },
     contactos: {
@@ -92,8 +95,9 @@ export const translations: Record<Lang, Translations> = {
         prefix: 'We develop',
         items: ['design systems', 'winning ideas', 'concepts', 'creative front-end'],
         services: ['UX & UI', 'Branding', 'Multimedia works', 'Atomic systems'],
-        cta: "LET'S WORK TOGETHER",
+        cta: "Let's work together",
       },
+      worksInstagram: 'Visit our Instagram',
     },
     clientes:  { label: 'Frequent clients' },
     contactos: {

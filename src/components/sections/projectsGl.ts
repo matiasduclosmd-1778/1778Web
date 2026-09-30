@@ -436,6 +436,7 @@ export function createReel(canvas: HTMLCanvasElement, images: string[]) {
     for (const t of f.titles) {
       if (t.alpha * tr <= 0.01) continue
       const x = W / 2 + t.x
+      const text = t.text.toUpperCase()
       // Entrance: the name rises a little as it fades in, once its image has inked in
       const y = f.titleY + (1 - tr) * f.titleSize * 0.35
       const alpha = t.alpha * tr
@@ -443,13 +444,13 @@ export function createReel(canvas: HTMLCanvasElement, images: string[]) {
       if (ghost !== 0) {
         ctx.globalAlpha = alpha * 0.75
         ctx.fillStyle = 'rgb(255,40,60)'
-        ctx.fillText(t.text, x + ghost, y)
+        ctx.fillText(text, x + ghost, y)
         ctx.fillStyle = 'rgb(0,230,255)'
-        ctx.fillText(t.text, x - ghost, y)
+        ctx.fillText(text, x - ghost, y)
       }
       ctx.globalAlpha = alpha
       ctx.fillStyle = '#ffffff'
-      ctx.fillText(t.text, x, y)
+      ctx.fillText(text, x, y)
     }
     ctx.globalAlpha = 1
     textTex.needsUpdate = true
