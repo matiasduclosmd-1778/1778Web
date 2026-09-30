@@ -25,6 +25,8 @@ const sheetVertex = /* glsl */ `
   uniform float uMinScale;
   uniform float uTime;
   uniform float uPulse;        // heartbeat on hover (0 at rest)
+  uniform float uReveal;       // entrance: 0 rolled up tight → 1 flat
+  uniform float uRollAmount;   // how tight the roll is at the start (rad over the sheet)
   varying vec2 vUv;
   varying float vD;            // 0 at the hinge → 1 at the free edge
   varying float vAngle;
@@ -34,7 +36,8 @@ const sheetVertex = /* glsl */ `
     vec2 size = uSize * scale;
     float d = uSide > 0.0 ? uv.x : 1.0 - uv.x;
     vD = d;
-    float curl = (uEdge + abs(uVel) * uVelocityCurl * uVelWeight) * uCurlAmount;
+    float unroll = 1.0 - uReveal;
+    float curl = (uEdge + abs(uVel) * uVelocityCurl * uVelWeight) * uCurlAmount + unroll * unroll * uRollAmount;
     float angle = curl * d;
     vAngle = angle;
     float hinge = uPos.x - uSide * size.x * 0.5;
@@ -70,6 +73,8 @@ const sheetFragment = /* glsl */ `
   uniform float uDarken;       // max darkening on the most folded part
   uniform float uOpacity;
   uniform float uBlur;         // max blur radius (uv) on sheets out of the scene
+  uniform float uReveal;       // entrance: ink spreads over the sheet from its hinge
+  uniform float uTime;
   varying vec2 vUv;
   varying float vD;
   varying float vAngle;
@@ -81,6 +86,25 @@ const sheetFragment = /* glsl */ `
     return p / (1.0 + 0.07 * uHover) + 0.5;
   }
 
+  float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float vnoise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+  }
+  float fbm(vec2 p) {
+    return vnoise(p) * 0.55 + vnoise(p * 2.1 + 3.7) * 0.3 + vnoise(p * 4.3 + 7.1) * 0.15;
+  }
+  // Same heat palette as the pointer trail: black → red → yellow → acid green
+  vec3 thermal(float x) {
+    x = clamp(x, 0.0, 1.0);
+    vec3 c = mix(vec3(0.0), vec3(0.95, 0.05, 0.0), smoothstep(0.0, 0.35, x));
+    c = mix(c, vec3(1.0, 0.92, 0.0), smoothstep(0.35, 0.7, x));
+    c = mix(c, vec3(0.35, 1.0, 0.1), smoothstep(0.8, 1.0, x));
+    return c;
+  }
+
   vec3 split(vec2 uv, vec2 o) {
     return vec3(texture2D(uTex, uv + o).r, texture2D(uTex, uv).g, texture2D(uTex, uv - o).b);
   }
@@ -88,10 +112,15 @@ const sheetFragment = /* glsl */ `
   void main() {
     vec2 uv = cover(vUv);
     float plane = uSize.x / uSize.y;
+    // Entrance: ink spreads from the hinge along the sheet with a liquid, noisy front
+    float field = vD * 0.75 + fbm(vUv * vec2(3.0, 2.2) + uTime * 0.12) * 0.35;
+    float front = uReveal * 1.25;
+    float ink = smoothstep(field - 0.015, field + 0.015, front);
+    float edge = ink * (1.0 - smoothstep(0.0, 0.14, front - field)); // just behind the front
     vec3 col;
     if (uReady > 0.5) {
       // RGB split along X, stronger towards the folded edge; none on a sheet at rest in the centre
-      float shift = (uEdge * 0.6 + abs(uVel)) * uRgbShift * uSide * vD;
+      float shift = (uEdge * 0.6 + abs(uVel)) * uRgbShift * uSide * vD + edge * 0.03 * uSide;
       vec2 o = vec2(shift, 0.0);
       // Out of the scene: blur that grows towards the folded edge. The branch is on uniforms only
       // (the whole sheet takes the same path), so there is no seam; the sheet in the scene skips
@@ -114,7 +143,10 @@ const sheetFragment = /* glsl */ `
     col = mix(col, vec3(0.0), uDarken * smoothstep(0.0, 1.6, vAngle));
     // Title legibility: bottom of the image fades to rgba(0,0,0,.5)
     col = mix(col, vec3(0.0), 0.5 * smoothstep(0.55, 0.0, vUv.y));
-    gl_FragColor = vec4(col, uOpacity);
+    // The wet front of the ink runs hot, like the pointer trail
+    float lum = dot(col, vec3(0.299, 0.587, 0.114));
+    col = mix(col, thermal(smoothstep(0.12, 0.9, lum) * 0.8 + edge * 0.35), edge);
+    gl_FragColor = vec4(col, uOpacity * ink);
   }
 `
 
@@ -203,6 +235,7 @@ export const REEL_PARAMS = {
   minScale: 0.92,
   blur: 0.012,          // blur on sheets out of the scene (uv)
   pulse: 0.035,         // heartbeat size on hover
+  rollAmount: 6.5,      // entrance: how tightly the sheet starts rolled (≈ a full turn)
   trailRadius: 0.075,   // pointer splat, share of the height
   trailDecay: 0.975,    // per frame
   smear: 0.09,          // how far the picture is dragged along the flow
@@ -233,6 +266,10 @@ export interface ReelFrame {
   hover: number[]
   /** Heartbeat per image (0 at rest) */
   pulse: number[]
+  /** Entrance per image: 0 rolled up and dry → 1 flat and inked */
+  reveal: number[]
+  /** Entrance of the title layer, 0..1 */
+  titleReveal: number
   time: number
   /** prefers-reduced-motion: no fold, no RGB, no trail — planes crossfade in place */
   reduced: boolean
@@ -285,6 +322,8 @@ export function createReel(canvas: HTMLCanvasElement, images: string[]) {
         uTime: { value: 0 },
         uOpacity: { value: 1 },
         uPulse: { value: 0 },
+        uReveal: { value: 0 },
+        uRollAmount: { value: REEL_PARAMS.rollAmount },
         uBlur: { value: REEL_PARAMS.blur },
         uCurlAmount: { value: REEL_PARAMS.uCurlAmount },
         uRadius: { value: REEL_PARAMS.uRadius },
@@ -360,7 +399,8 @@ export function createReel(canvas: HTMLCanvasElement, images: string[]) {
   let DPR = 1
 
   const drawTitles = (f: ReelFrame) => {
-    const key = JSON.stringify([f.titles, f.titleY, f.titleSize, f.ghost.toFixed(2), W, H])
+    const tr = Math.min(1, Math.max(0, f.titleReveal))
+    const key = JSON.stringify([f.titles, f.titleY, f.titleSize, f.ghost.toFixed(2), tr.toFixed(3), W, H])
     if (key === lastTitleKey) return
     lastTitleKey = key
     const ctx = textCtx
@@ -371,19 +411,22 @@ export function createReel(canvas: HTMLCanvasElement, images: string[]) {
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     for (const t of f.titles) {
-      if (t.alpha <= 0.01) continue
+      if (t.alpha * tr <= 0.01) continue
       const x = W / 2 + t.x
+      // Entrance: the name rises a little as it fades in, once its image has inked in
+      const y = f.titleY + (1 - tr) * f.titleSize * 0.35
+      const alpha = t.alpha * tr
       // Ghost: red / cyan copies along X with the scroll speed
       if (Math.abs(f.ghost) > 0.05) {
-        ctx.globalAlpha = t.alpha * 0.75
+        ctx.globalAlpha = alpha * 0.75
         ctx.fillStyle = 'rgb(255,40,60)'
-        ctx.fillText(t.text, x + f.ghost, f.titleY)
+        ctx.fillText(t.text, x + f.ghost, y)
         ctx.fillStyle = 'rgb(0,230,255)'
-        ctx.fillText(t.text, x - f.ghost, f.titleY)
+        ctx.fillText(t.text, x - f.ghost, y)
       }
-      ctx.globalAlpha = t.alpha
+      ctx.globalAlpha = alpha
       ctx.fillStyle = '#ffffff'
-      ctx.fillText(t.text, x, f.titleY)
+      ctx.fillText(t.text, x, y)
     }
     ctx.globalAlpha = 1
     textTex.needsUpdate = true
@@ -433,12 +476,17 @@ export function createReel(canvas: HTMLCanvasElement, images: string[]) {
           u.uOpacity.value = 1
           u.uRgbShift.value = REEL_PARAMS.uRgbShift
         }
-        u.uSide.value = off >= 0 ? 1 : -1
+        // The sheet in front always unrolls left → right on its entrance (reading direction); its
+        // fold side is otherwise undecided right at the centre
+        const entering = (f.reveal[i] ?? 1) < 0.999
+        u.uSide.value = entering && dist < 0.15 ? 1 : off >= 0 ? 1 : -1
         // Right at the centre the fold side is undecided: velocity bends a sheet only off-centre
         u.uVelWeight.value = smoothstep(0, 0.15, dist)
         u.uSize.value.set(f.w, f.h)
         u.uHover.value = f.hover[i] ?? 0
         u.uPulse.value = (f.pulse[i] ?? 0) * REEL_PARAMS.pulse * (f.reduced ? 0 : 1)
+        u.uReveal.value = f.reveal[i] ?? 1
+        u.uRollAmount.value = f.reduced ? 0 : REEL_PARAMS.rollAmount
         u.uTime.value = f.time
         u.uBlur.value = REEL_PARAMS.blur
         u.uCurlAmount.value = REEL_PARAMS.uCurlAmount

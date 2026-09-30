@@ -14,6 +14,17 @@ const GHOST_MAX_PX = 6    // title RGB ghost at full speed
 const BEAT_PERIOD = 1.05  // s between heartbeats while hovered
 const TITLE_S = 0.3       // title change: fade + slide
 const TITLE_SLIDE_PX = 60
+// Entrance (every time the camera comes down onto Works): each sheet unrolls from a tube while ink
+// spreads over it — the one in front first, its neighbours after — then the name, then the dots
+const REVEAL_S = 1.6
+const REVEAL_DELAY = 0.15
+const REVEAL_STAGGER = 0.22
+const TITLE_REVEAL_AT = 0.9
+const TITLE_REVEAL_S = 0.6
+
+const easeOutCubic = (t: number) => 1 - (1 - t) ** 3
+const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2)
+const clamp01 = (t: number) => Math.min(1, Math.max(0, t))
 
 const easeOutExpo = (t: number) => (t >= 1 ? 1 : 1 - 2 ** (-10 * t))
 
@@ -102,6 +113,7 @@ export default function ProjectsReel({ pos, visible, preload, onSelect }: Projec
           g.add(REEL_PARAMS, 'minScale', 0.6, 1, 0.01)
           g.add(REEL_PARAMS, 'blur', 0, 0.05, 0.001)
           g.add(REEL_PARAMS, 'pulse', 0, 0.1, 0.001)
+          g.add(REEL_PARAMS, 'rollAmount', 0, 12, 0.1)
           g.add(REEL_PARAMS, 'trailRadius', 0.02, 0.25, 0.001)
           g.add(REEL_PARAMS, 'trailDecay', 0.8, 0.995, 0.001)
           g.add(REEL_PARAMS, 'smear', 0, 0.3, 0.001)
@@ -142,6 +154,8 @@ export default function ProjectsReel({ pos, visible, preload, onSelect }: Projec
     let prevPos = pos.get()
     let vel = 0
     let wasOn = false
+    let enteredAt = 0
+    let enteredOn = 0
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick)
       const r = reel.current
@@ -151,6 +165,11 @@ export default function ProjectsReel({ pos, visible, preload, onSelect }: Projec
         last = now
         prevPos = pos.get()
         return
+      }
+      if (!wasOn) {
+        // (Re)entering Works: replay the entrance around the project in front
+        enteredAt = now / 1000
+        enteredOn = Math.round(pos.get())
       }
       wasOn = true
       const dt = Math.min(0.05, (now - last) / 1000)
@@ -189,6 +208,11 @@ export default function ProjectsReel({ pos, visible, preload, onSelect }: Projec
       if (tl.prev >= 0 && e < 1) titles.unshift({ text: PROJECTS[tl.prev].name, alpha: 1 - e, x: -tl.dir * slide * e })
       const l = layoutFor(W, H)
       const nameSize = nameSizeFor(W)
+      const since = t - enteredAt
+      const reveal = PROJECTS.map((_, i) => reduceMotion
+        ? 1
+        : easeInOutCubic(clamp01((since - REVEAL_DELAY - Math.abs(i - enteredOn) * REVEAL_STAGGER) / REVEAL_S)))
+      const titleReveal = reduceMotion ? 1 : easeOutCubic(clamp01((since - TITLE_REVEAL_AT) / TITLE_REVEAL_S))
 
       r.render({
         pos: p,
@@ -203,6 +227,8 @@ export default function ProjectsReel({ pos, visible, preload, onSelect }: Projec
         pulse: hover.current.map((hv) => (hv.target ? beat(t - hv.since) : 0) * Math.max(0, Math.min(1, hv.amt))),
         time: t,
         reduced: reduceMotion,
+        reveal,
+        titleReveal,
         titles,
         // The name straddles the image's bottom edge by ~60% of its height
         titleY: l.top + l.h - nameSize * 0.62 + nameSize * 0.5,
@@ -275,8 +301,13 @@ export default function ProjectsReel({ pos, visible, preload, onSelect }: Projec
 
       {/* Dots */}
       <div
-        className="absolute left-0 right-0 flex justify-center"
-        style={{ top: l.top + l.h + nameSize * 0.45 + 18 - 16 }}
+        className="absolute left-0 right-0 flex justify-center transition-[opacity,transform] duration-700 ease-out"
+        style={{
+          top: l.top + l.h + nameSize * 0.45 + 18 - 16,
+          opacity: visible ? 1 : 0,
+          transform: visible ? 'none' : 'translateY(8px)',
+          transitionDelay: visible ? '1.3s' : '0s',
+        }}
       >
         {PROJECTS.map((p, i) => (
           <button
