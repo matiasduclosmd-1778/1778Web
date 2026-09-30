@@ -31,8 +31,16 @@ const PAN_SHARE = 0.47                             // share of the lateral stret
 const GLIDE_S = 3                                  // after the drop, the camera's own trip to the closing frame
 
 const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2)
-// One camera for every scroll-driven beat: critically damped, so it lands softly and never bounces
-const CAMERA_SPRING = { stiffness: 105, damping: 25, mass: 0.7, restDelta: 0.00005 }
+// One camera for every scroll-driven beat: overdamped, so it lands softly and never bounces.
+// Touch scrolling is native (instant under the finger), so the scenes follow it more tightly there
+// (~0.18 s) than on desktop, where Lenis already smooths the wheel (~0.28 s)
+const TOUCH = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
+const CAMERA_SPRING = TOUCH
+  ? { stiffness: 260, damping: 40, mass: 0.7, restDelta: 0.00005 }
+  : { stiffness: 140, damping: 28, mass: 0.7, restDelta: 0.00005 }
+const REEL_SPRING = TOUCH
+  ? { stiffness: 160, damping: 32, mass: 0.8, restDelta: 0.0005 }
+  : { stiffness: 90, damping: 24, mass: 0.8, restDelta: 0.0005 }
 
 export default function Hero() {
   const { t } = useLang()
@@ -56,7 +64,7 @@ export default function Hero() {
   const worksY = useTransform(down, (v) => `${(1 - v) * WORKS_DROP * 100}%`)
   // Projects reel: the images slide sideways, one project per stop
   const reelSource = useTransform(scrollYProgress, [REEL_START, REEL_END], [0, PROJECTS.length - 1], { clamp: true })
-  const reelPos = useSpring(reelSource, { stiffness: 60, damping: 20, mass: 0.8, restDelta: 0.0005 })
+  const reelPos = useSpring(reelSource, REEL_SPRING)
   const [reelVisible, setReelVisible] = useState(false)
   useMotionValueEvent(down, 'change', (v) => setReelVisible(v > 0.6))
   // The reel's three.js chunk and project images load once the camera heads for the logos screen
