@@ -1,9 +1,18 @@
 import { useState, useRef, useEffect, type RefObject } from 'react'
-import { motion, AnimatePresence, useDragControls } from 'framer-motion'
+import { motion, AnimatePresence, useDragControls, useInView } from 'framer-motion'
 import { X, ArrowRight } from 'lucide-react'
 import { FILES, thumb, full } from '@/data/portfolio'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import type { FileItem } from '@/types'
 import { useLang } from '@/contexts/LangContext'
+
+const EASE_OUT = [0.16, 1, 0.3, 1] as const
+
+// Phones: a loose 3 × 3 scatter that fits a narrow screen (desktop keeps the data positions)
+const mobileSpot = (i: number) => ({
+  left: `${3 + (i % 3) * 33 + (i % 2 ? 1.5 : 0)}%`,
+  top: `${4 + Math.floor(i / 3) * 31 + ((i * 7) % 3) * 1.5}%`,
+})
 
 // ── Lightbox ──────────────────────────────────────────────────────────────
 
@@ -105,6 +114,9 @@ function Lightbox({ file, desktopRef, onClose }: LightboxProps) {
 
 interface FileIconProps {
   file: FileItem
+  index: number
+  touch: boolean
+  shown: boolean
   isSelected: boolean
   zIndex: number
   desktopRef: RefObject<HTMLDivElement | null>
@@ -112,25 +124,29 @@ interface FileIconProps {
   onDoubleClick: () => void
 }
 
-function FileIcon({ file, isSelected, zIndex, desktopRef, onPointerDown, onDoubleClick }: FileIconProps) {
+function FileIcon({ file, index, touch, shown, isSelected, zIndex, desktopRef, onPointerDown, onDoubleClick }: FileIconProps) {
+  const spot = touch ? mobileSpot(index) : { left: file.left, top: file.top }
   return (
     <motion.div
       className="absolute"
-      style={{ left: file.left, top: file.top, zIndex, rotate: file.rotation }}
-      drag
+      style={{ ...spot, zIndex, rotate: file.rotation }}
+      // Touch: dragging would swallow the page scroll, so a tap simply opens the file
+      drag={!touch}
       dragConstraints={desktopRef}
       dragMomentum={false}
       dragElastic={0}
       whileDrag={{ scale: 1.08, rotate: 0, zIndex: 9999 }}
-      initial={{ opacity: 0, scale: 0.65, y: 10 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ delay: parseInt(file.id) * 0.07, type: 'spring', stiffness: 220, damping: 20 }}
-      onPointerDown={(e) => { e.stopPropagation(); onPointerDown() }}
+      whileTap={touch ? { scale: 0.94 } : undefined}
+      initial={{ opacity: 0, scale: 0.65, y: 18 }}
+      animate={shown ? { opacity: 1, scale: 1, y: 0 } : undefined}
+      transition={{ delay: 0.15 + index * 0.07, type: 'spring', stiffness: 170, damping: 20 }}
+      onPointerDown={(e) => { if (!touch) e.stopPropagation(); onPointerDown() }}
       onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick() }}
+      onTap={touch ? onDoubleClick : undefined}
     >
       <div
-        className="flex flex-col items-center select-none"
-        style={{ gap: 7, cursor: 'default', width: 108 }}
+        className="flex flex-col items-center select-none w-[88px] sm:w-[108px]"
+        style={{ gap: 7, cursor: 'default' }}
       >
         <motion.div
           className={`rounded-xl overflow-hidden ${isSelected ? 'ring-[2.5px] ring-white/40' : ''}`}
@@ -143,7 +159,8 @@ function FileIcon({ file, isSelected, zIndex, desktopRef, onPointerDown, onDoubl
             alt={file.name}
             width={104}
             height={80}
-            className="w-[104px] h-[80px] object-cover block"
+            loading="lazy"
+            className="w-[84px] h-[64px] sm:w-[104px] sm:h-[80px] object-cover block"
             draggable={false}
           />
         </motion.div>
@@ -173,6 +190,9 @@ export default function Arte() {
   const [selected, setSelected] = useState<string | null>(null)
   const [openFile, setOpenFile] = useState<FileItem | null>(null)
   const [zOrder, setZOrder]     = useState(() => FILES.map(f => f.id))
+  const touch                   = useMediaQuery('(hover: none)')
+  const frameRef                = useRef<HTMLDivElement>(null)
+  const shown                   = useInView(frameRef, { once: true, amount: 0.25 })
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpenFile(null) }
@@ -184,12 +204,16 @@ export default function Arte() {
     setZOrder(prev => [...prev.filter(i => i !== id), id])
 
   return (
-    <section id="arte" className="bg-black py-12 md:py-16 px-3 sm:px-4 md:px-8">
+    <section id="arte" className="bg-black py-10 md:py-16 px-2.5 sm:px-4 md:px-8">
       <div className="max-w-7xl mx-auto">
 
-        {/* Desktop frame */}
-        <div
-          className="rounded-3xl p-3"
+        {/* Desktop frame — rises into place as it enters the view */}
+        <motion.div
+          ref={frameRef}
+          initial={{ opacity: 0, y: 60, scale: 0.96 }}
+          animate={shown ? { opacity: 1, y: 0, scale: 1 } : undefined}
+          transition={{ duration: 1.1, ease: EASE_OUT }}
+          className="rounded-[1.25rem] sm:rounded-3xl p-2 sm:p-3"
           style={{
             background: '#0d0d0d',
             border: '1px solid rgba(255,255,255,0.05)',
@@ -199,7 +223,7 @@ export default function Arte() {
           {/* Screen */}
           <div
             ref={desktopRef}
-            className="relative rounded-2xl overflow-hidden h-[340px] sm:h-[420px] md:h-[500px] lg:h-[520px]"
+            className="relative rounded-xl sm:rounded-2xl overflow-hidden h-[min(470px,68svh)] sm:h-[420px] md:h-[500px] lg:h-[520px]"
             style={{ background: '#141414' }}
             onClick={() => setSelected(null)}
           >
@@ -225,7 +249,7 @@ export default function Arte() {
               <div
                 className="font-light leading-none tracking-[-0.05em]"
                 style={{
-                  fontSize: 162,
+                  fontSize: 'clamp(84px, 16vw, 162px)',
                   color: 'rgba(222,219,200,0.065)',
                   lineHeight: 0.82,
                 }}
@@ -236,7 +260,7 @@ export default function Arte() {
               <div
                 className="font-serif italic leading-none tracking-[-0.03em]"
                 style={{
-                  fontSize: 142,
+                  fontSize: 'clamp(74px, 14vw, 142px)',
                   color: 'rgba(222,219,200,0.065)',
                   lineHeight: 0.88,
                   paddingLeft: '0.38em',
@@ -251,13 +275,16 @@ export default function Arte() {
               className="absolute bottom-3 right-4 select-none pointer-events-none text-[9px]"
               style={{ color: 'rgba(255,255,255,0.1)' }}
             >
-              {t.arte.hint}
+              {touch ? t.arte.hintTouch : t.arte.hint}
             </p>
 
-            {FILES.map((file) => (
+            {FILES.map((file, i) => (
               <FileIcon
                 key={file.id}
                 file={file}
+                index={i}
+                touch={touch}
+                shown={shown}
                 isSelected={selected === file.id}
                 zIndex={zOrder.indexOf(file.id) + 1}
                 desktopRef={desktopRef}
@@ -279,7 +306,7 @@ export default function Arte() {
           </div>
 
           {/* Dock */}
-          <div className="mt-3 flex items-center justify-center gap-3">
+          <div className="mt-2 sm:mt-3 flex items-center justify-center gap-2 sm:gap-3">
             <motion.div
               className="inline-flex items-center gap-3 rounded-2xl px-4 py-[10px]"
               style={{
@@ -287,12 +314,12 @@ export default function Arte() {
                 backdropFilter: 'blur(16px)',
                 border: '0.5px solid rgba(255,255,255,0.07)',
               }}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              initial={{ opacity: 0, y: 12 }}
+              animate={shown ? { opacity: 1, y: 0 } : undefined}
+              transition={{ delay: 0.7, duration: 0.8, ease: EASE_OUT }}
             >
               <div className="rounded-xl p-1.5 flex-shrink-0" style={{ background: '#222' }}>
-                <img src="/1778logo.png" alt="1778Studio" className="w-8 h-8 object-contain block" draggable={false} />
+                <img src="/clientes/1778logo.png" alt="1778Studio" className="w-8 h-8 object-contain block" draggable={false} />
               </div>
               <div className="w-px h-5" style={{ background: 'rgba(255,255,255,0.1)' }} />
               <span className="text-sm pr-1" style={{ color: 'rgba(222,219,200,0.4)' }}>
@@ -305,9 +332,9 @@ export default function Arte() {
               target="_blank"
               rel="noopener noreferrer"
               className="group inline-flex items-center gap-2 hover:gap-3 transition-all duration-300 bg-primary rounded-full pl-4 pr-1 py-1 font-medium text-sm text-black"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.85, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              initial={{ opacity: 0, y: 12 }}
+              animate={shown ? { opacity: 1, y: 0 } : undefined}
+              transition={{ delay: 0.85, duration: 0.8, ease: EASE_OUT }}
             >
               Portfolio
               <span className="bg-black rounded-full w-8 h-8 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
@@ -315,7 +342,7 @@ export default function Arte() {
               </span>
             </motion.a>
           </div>
-        </div>
+        </motion.div>
 
       </div>
     </section>

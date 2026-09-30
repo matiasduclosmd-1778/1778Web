@@ -2,8 +2,10 @@ export type Lang = 'es' | 'en'
 
 export interface Translations {
   nav: {
-    home: string; services: string; clients: string; art: string; contact: string
+    home: string; works: string; contact: string
   }
+  /** Floating cue shown while there is more page below */
+  scrollHint: string
   hero: {
     phrases: string[]
     scrollCta: string
@@ -18,15 +20,16 @@ export interface Translations {
     lateral: { prefix: string; items: string[] }
   }
   clientes: { label: string }
-  arte: { label: string; works: string; hint: string }
+  arte: { label: string; works: string; hint: string; hintTouch: string }
   contactos: { label: string; heading: string; body: string; footer: string }
 }
 
 export const translations: Record<Lang, Translations> = {
   es: {
     nav: {
-      home: 'Home', services: 'Servicios', clients: 'Clientes', art: 'Arte', contact: 'Contactos',
+      home: 'Home', works: 'Works', contact: 'Contact',
     },
+    scrollHint: 'Continuá scrolleando',
     hero: {
       phrases: [
         'Hola. Somos 1778Studio.',
@@ -52,7 +55,7 @@ export const translations: Record<Lang, Translations> = {
       },
     },
     clientes:  { label: 'Clientes frecuentes' },
-    arte:      { label: 'Portfolio', works: '2026 trabajos', hint: 'Doble click para abrir · Arrastrar para mover' },
+    arte:      { label: 'Portfolio', works: '2026 trabajos', hint: 'Doble click para abrir · Arrastrar para mover', hintTouch: 'Tocá un archivo para abrirlo' },
     contactos: {
       label: 'Contacto', heading: 'Hablemos.',
       body:   '¿Tenés un proyecto en mente? Contanos sobre él y trabajemos juntos para hacerlo realidad.',
@@ -62,8 +65,9 @@ export const translations: Record<Lang, Translations> = {
 
   en: {
     nav: {
-      home: 'Home', services: 'Services', clients: 'Clients', art: 'Art', contact: 'Contact',
+      home: 'Home', works: 'Works', contact: 'Contact',
     },
+    scrollHint: 'Keep scrolling',
     hero: {
       phrases: [
         'Hi. We are 1778Studio.',
@@ -89,7 +93,7 @@ export const translations: Record<Lang, Translations> = {
       },
     },
     clientes:  { label: 'Frequent clients' },
-    arte:      { label: 'Portfolio', works: '2026 works', hint: 'Double-click to open · Drag to move' },
+    arte:      { label: 'Portfolio', works: '2026 works', hint: 'Double-click to open · Drag to move', hintTouch: 'Tap a file to open it' },
     contactos: {
       label: 'Contact', heading: "Let's talk.",
       body:   "Have a project in mind? Tell us about it and let's work together to make it happen.",

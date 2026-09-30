@@ -1,9 +1,8 @@
-import { motion, AnimatePresence, useScroll, useSpring, useTransform, useMotionValueEvent } from 'framer-motion'
-import { ArrowDown, ArrowRight, Menu, X } from 'lucide-react'
-import { useState, useEffect, useRef } from 'react'
+import { motion, useScroll, useSpring, useTransform, useMotionValueEvent } from 'framer-motion'
+import { ArrowDown, ArrowRight } from 'lucide-react'
+import { useRef } from 'react'
 import { useLang } from '@/contexts/LangContext'
-import { scrollTo, holdScroll, holdThenGlide } from '@/hooks/useLenis'
-import { LangSwitch } from '@/components/ui'
+import { scrollTo, holdThenGlide } from '@/hooks/useLenis'
 import HeroFace from './HeroFace'
 import LogoMorph, { PAN_FRAC, DROP_AT, DROP_IMPACT_MS, WORKS_DROP } from './LogoMorph'
 import LateralScene from './LateralScene'
@@ -11,22 +10,21 @@ import LateralScene from './LateralScene'
 // Pinned scroll budget (vh): morph → dwell on the closing frame → lateral scene → down to Works
 const MORPH_VH = 370
 const DWELL_VH = 50
-const LATERAL_VH = 380
+const LATERAL_VH = 180
 const WORKS_VH = 260
 const PIN_VH = MORPH_VH + DWELL_VH + LATERAL_VH + WORKS_VH
 const MORPH_END = MORPH_VH / PIN_VH                // progress where the closing frame lands
 const LATERAL_START = (MORPH_VH + DWELL_VH) / PIN_VH
 const WORKS_START = (MORPH_VH + DWELL_VH + LATERAL_VH) / PIN_VH
-const PAN_SHARE = 0.22                             // share of the lateral stretch spent sliding
-const FINAL_HOLD_MS = 1000                         // how long the closing frame holds the scroll
+const PAN_SHARE = 0.47                             // share of the lateral stretch spent sliding (≈85vh)
+const GLIDE_S = 3                                  // after the drop, the camera's own trip to the closing frame
 
 const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2)
+// One camera for every scroll-driven beat: critically damped, so it lands softly and never bounces
+const CAMERA_SPRING = { stiffness: 80, damping: 22, mass: 0.7, restDelta: 0.00005 }
 
 export default function Hero() {
   const { t } = useLang()
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
-  const [hoveredNav, setHoveredNav] = useState<string | null>(null)
 
   // Scroll-driven morph: eyes → 4 → 8 → 1778 logo, while the card stays pinned
   const sectionRef = useRef<HTMLElement>(null)
@@ -34,15 +32,15 @@ export default function Hero() {
   const { scrollYProgress } = useScroll({ target: sectionRef, offset: ['start start', 'end end'] })
   // The morph plays over the first part of the pin; the rest is a dwell on the closing frame
   const morphSource = useTransform(scrollYProgress, [0, MORPH_END], [0, 1], { clamp: true })
-  const morph = useSpring(morphSource, { stiffness: 90, damping: 24, mass: 0.6, restDelta: 0.00005 })
+  const morph = useSpring(morphSource, CAMERA_SPRING)
   // Lateral stretch: the camera slides right into the next scene
   const lateralSource = useTransform(scrollYProgress, [LATERAL_START, WORKS_START], [0, 1], { clamp: true })
-  const lateral = useSpring(lateralSource, { stiffness: 90, damping: 24, mass: 0.6, restDelta: 0.00005 })
+  const lateral = useSpring(lateralSource, CAMERA_SPRING)
   const pan = useTransform(lateral, (v) => easeInOutCubic(Math.min(1, Math.max(0, v / PAN_SHARE))))
   const finalShift = useTransform(pan, (v) => `${-v * PAN_FRAC * 100}%`)
   // Works: the camera moves down, the grid carries on and the title rises in
   const downSource = useTransform(scrollYProgress, [WORKS_START, 1], [0, 1], { clamp: true })
-  const downSpring = useSpring(downSource, { stiffness: 90, damping: 24, mass: 0.6, restDelta: 0.00005 })
+  const downSpring = useSpring(downSource, CAMERA_SPRING)
   const down = useTransform(downSpring, (v) => easeInOutCubic(Math.min(1, Math.max(0, v / 0.5))))
   const worksY = useTransform(down, (v) => `${(1 - v) * WORKS_DROP * 100}%`)
   // …then the scene melts into white: grid + chromatic "8" blur away, "Works" turns black
@@ -51,8 +49,14 @@ export default function Hero() {
   const sceneOpacity = useTransform(whiten, [0, 1], [1, 0.2])
   const worksColor = useTransform(whiten, [0, 1], ['#ffffff', '#000000'])
 
+  // Leaving the pin: the card sinks back and dims as the next section rises over it
+  const { scrollYProgress: exitProgress } = useScroll({ target: sectionRef, offset: ['end end', 'end start'] })
+  const exit = useSpring(exitProgress, CAMERA_SPRING)
+  const cardScale = useTransform(exit, [0, 1], [1, 0.88])
+  const cardOpacity = useTransform(exit, [0, 0.9], [1, 0.25])
+  const cardRadius = useTransform(exit, [0, 0.4], ['0px', '28px'])
+
   // Magnet on the closing frame: arriving there (scrolling down) parks the page for a moment
-  const heldRef = useRef(false)
   const dropHeldRef = useRef(false)
   useMotionValueEvent(scrollYProgress, 'change', (v) => {
     const section = sectionRef.current
@@ -64,15 +68,7 @@ export default function Hero() {
     if (!dropHeldRef.current && v >= dropAt && scrollYProgress.getPrevious()! < dropAt) {
       dropHeldRef.current = true
       const pinned = section.offsetHeight - window.innerHeight
-      heldRef.current = true // the glide lands on the closing frame: no second magnet there
-      holdThenGlide(section.offsetTop + dropAt * pinned, DROP_IMPACT_MS + 120, section.offsetTop + MORPH_END * pinned)
-      return
-    }
-    if (v < MORPH_END - 0.03) heldRef.current = false
-    if (!heldRef.current && v >= MORPH_END && scrollYProgress.getPrevious()! < MORPH_END) {
-      heldRef.current = true
-      const y = section.offsetTop + MORPH_END * (section.offsetHeight - window.innerHeight)
-      holdScroll(y, FINAL_HOLD_MS)
+      holdThenGlide(section.offsetTop + dropAt * pinned, DROP_IMPACT_MS + 120, section.offsetTop + MORPH_END * pinned, GLIDE_S)
     }
   })
   // CTAs leave as soon as the morph starts
@@ -85,201 +81,14 @@ export default function Hero() {
   const finCtaY = useTransform(morph, [0.955, 0.985], [12, 0])
   const finEvents = useTransform(morph, (v) => (v > 0.96 ? 'auto' : 'none'))
 
-  useEffect(() => {
-    const onScroll = () => {
-      const section = sectionRef.current
-      const pinnedFor = section ? section.offsetHeight - window.innerHeight : 0
-      setScrolled(window.scrollY > pinnedFor + 80)
-    }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
-  const navItems = [
-    { label: t.nav.home,     href: '#hero'      },
-    { label: t.nav.services, href: '#servicios' },
-    { label: t.nav.clients,  href: '#clientes'  },
-    { label: t.nav.art,      href: '#arte'      },
-    { label: t.nav.contact,  href: '#contactos' },
-  ]
-
   return (
     <section id="hero" ref={sectionRef} className="relative" style={{ height: `${PIN_VH + 100}vh` }}>
-      {/* Nav targets for "Servicios" and "Clientes": the lateral scene, once it has slid in */}
-      {[
-        ['servicios', MORPH_VH + DWELL_VH + LATERAL_VH * PAN_SHARE],
-        ['clientes', MORPH_VH + DWELL_VH + LATERAL_VH * PAN_SHARE],
-        ['works', PIN_VH],
-      ].map(([id, top]) => (
-        <div key={id} id={String(id)} aria-hidden className="absolute left-0 w-px h-px" style={{ top: `${top}vh` }} />
-      ))}
-      <div className="sticky top-0 h-screen p-4 md:p-6">
-
-
-        {/* ── Floating navbar (on scroll) ───────────────────────── */}
-        <AnimatePresence>
-          {scrolled && (
-            <motion.div
-              className="fixed z-50"
-              style={{ top: 16, left: '50%', x: '-50%' }}
-              initial={{ opacity: 0, y: -32, scaleX: 0.92, scaleY: 0.8 }}
-              animate={{ opacity: 1, y: 0, scaleX: 1, scaleY: 1 }}
-              exit={{ opacity: 0, y: -24, scaleX: 0.94, scaleY: 0.85 }}
-              transition={{ type: 'spring', stiffness: 320, damping: 22, mass: 0.8 }}
-            >
-              <nav
-                className="flex items-center gap-3 md:gap-6 px-5 py-[10px] md:px-6 md:py-2 rounded-full bg-black"
-                style={{
-                  border: '0.5px solid rgba(255,255,255,0.1)',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-                }}
-              >
-                <a href="#hero" className="shrink-0" onClick={(e) => { e.preventDefault(); scrollTo(0) }}>
-                  <img src="/1778-white.svg" alt="1778Studio" className="h-7 w-auto object-contain" />
-                </a>
-                <ul className="hidden md:flex items-center gap-1">
-                  {navItems.map(({ label, href }) => (
-                    <li key={href} className="relative">
-                      {hoveredNav === href && (
-                        <motion.div
-                          layoutId="nav-pill"
-                          className="absolute inset-0 rounded-full bg-white"
-                          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                        />
-                      )}
-                      <a
-                        href={href}
-                        className="relative z-10 block px-3 py-1 text-xs md:text-sm whitespace-nowrap transition-colors duration-150"
-                        style={{ color: hoveredNav === href ? '#000' : 'rgba(225,224,204,0.8)' }}
-                        onMouseEnter={() => setHoveredNav(href)}
-                        onMouseLeave={() => setHoveredNav(null)}
-                        onClick={(e) => { e.preventDefault(); scrollTo(href) }}
-                      >
-                        {label}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-                <div className="flex items-center gap-2 md:gap-3">
-                  <div className="hidden md:block w-px h-4 bg-white/10" />
-                  <LangSwitch />
-                  <button
-                    className="md:hidden flex items-center justify-center w-8 h-8 rounded-full border border-white/10"
-                    onClick={() => setMenuOpen(true)}
-                    aria-label="Abrir menú"
-                  >
-                    <Menu className="w-4 h-4" style={{ color: 'rgba(222,219,200,0.8)' }} />
-                  </button>
-                </div>
-              </nav>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* ── Navbar ────────────────────────────────────────────── */}
-        <div className="absolute top-4 md:top-6 left-1/2 -translate-x-1/2 z-20">
-          <nav className="bg-black rounded-b-2xl md:rounded-b-3xl px-5 py-[10px] md:px-6 md:py-2 flex items-center gap-3 md:gap-6">
-            {/* Logo */}
-            <a href="#hero" className="shrink-0" onClick={(e) => { e.preventDefault(); scrollTo(0) }}>
-              <img src="/1778-white.svg" alt="1778Studio" className="h-7 w-auto object-contain" />
-            </a>
-
-            {/* Desktop links — hidden on mobile */}
-            <ul className="hidden md:flex items-center gap-1">
-              {navItems.map(({ label, href }) => (
-                <li key={href} className="relative">
-                  {hoveredNav === href && (
-                    <motion.div
-                      layoutId="nav-pill-static"
-                      className="absolute inset-0 rounded-full bg-white"
-                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                  <a
-                    href={href}
-                    className="relative z-10 block px-3 py-1 text-xs md:text-sm whitespace-nowrap transition-colors duration-150"
-                    style={{ color: hoveredNav === href ? '#000' : 'rgba(225,224,204,0.8)' }}
-                    onMouseEnter={() => setHoveredNav(href)}
-                    onMouseLeave={() => setHoveredNav(null)}
-                    onClick={(e) => { e.preventDefault(); scrollTo(href) }}
-                  >
-                    {label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-
-            {/* Right side: divider (desktop) + lang switch + hamburger (mobile) */}
-            <div className="flex items-center gap-2 md:gap-3 ml-1">
-              <div className="hidden md:block w-px h-4 bg-white/10" />
-              <LangSwitch />
-              <button
-                className="md:hidden flex items-center justify-center w-8 h-8 rounded-full border border-white/10"
-                onClick={() => setMenuOpen(true)}
-                aria-label="Abrir menú"
-              >
-                <Menu className="w-4 h-4" style={{ color: 'rgba(222,219,200,0.8)' }} />
-              </button>
-            </div>
-          </nav>
-        </div>
-
-        {/* ── Mobile fullscreen menu ────────────────────────────── */}
-        <AnimatePresence>
-          {menuOpen && (
-            <motion.div
-              className="fixed inset-0 z-50 flex flex-col md:hidden"
-              style={{ background: '#080808' }}
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            >
-              {/* Top bar */}
-              <div className="flex items-center justify-between px-6 pt-6 pb-4">
-                <a href="#hero" onClick={(e) => { e.preventDefault(); setMenuOpen(false); scrollTo(0) }}>
-                  <img src="/1778-white.svg" alt="1778Studio" className="h-7 w-auto object-contain" />
-                </a>
-                <button
-                  onClick={() => setMenuOpen(false)}
-                  className="w-9 h-9 flex items-center justify-center rounded-full border border-white/10"
-                  aria-label="Cerrar menú"
-                >
-                  <X className="w-4 h-4" style={{ color: 'rgba(222,219,200,0.7)' }} />
-                </button>
-              </div>
-
-              {/* Nav links */}
-              <nav className="flex-1 flex flex-col justify-center px-6 gap-6">
-                {navItems.map(({ label, href }, i) => (
-                  <motion.a
-                    key={href}
-                    href={href}
-                    onClick={(e) => { e.preventDefault(); setMenuOpen(false); scrollTo(href) }}
-                    className="text-[2.8rem] font-medium leading-none tracking-[-0.02em]"
-                    style={{ color: 'rgba(222,219,200,0.6)' }}
-                    initial={{ opacity: 0, x: -16 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.06 + i * 0.07, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                    onMouseEnter={(e) => (e.currentTarget.style.color = '#E1E0CC')}
-                    onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(222,219,200,0.6)')}
-                  >
-                    {label}
-                  </motion.a>
-                ))}
-              </nav>
-
-              {/* Bottom */}
-              <div className="px-6 pb-10 flex items-center justify-between border-t border-white/5 pt-6">
-                <LangSwitch />
-                <p className="text-gray-700 text-xs">© 2026 1778Studio</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
+      {/* Nav target for "Works": the camera has come down onto the Works title */}
+      <div id="works" aria-hidden className="absolute left-0 w-px h-px" style={{ top: `${PIN_VH}vh` }} />
+      <div className="sticky top-0 h-[100svh] p-2.5 sm:p-4 md:p-6">
+      <motion.div style={{ scale: cardScale, opacity: cardOpacity, borderRadius: cardRadius }} className="w-full h-full origin-top overflow-hidden">
       <div
-        className="relative w-full h-full rounded-2xl md:rounded-[2rem] overflow-hidden flex items-center justify-center"
+        className="relative w-full h-full rounded-[1.25rem] md:rounded-[2rem] overflow-hidden flex items-center justify-center"
         style={{ background: '#0A1010' }}
       >
         <h1 className="sr-only">1778Studio — {t.hero.phrases.join(' ')}</h1>
@@ -294,7 +103,7 @@ export default function Hero() {
         {/* ── Closing hero frame (slides out left with the camera) ─ */}
         <motion.div className="absolute inset-0 z-10 pointer-events-none" style={{ x: finalShift }}>
         <motion.div
-          className="absolute left-5 md:left-[5%] top-1/2 -translate-y-1/2 max-w-[90%]"
+          className="absolute left-5 md:left-[5%] top-[15%] md:top-1/2 md:-translate-y-1/2 max-w-[90%]"
           style={{ pointerEvents: finEvents }}
         >
           <h2 className="text-white leading-[1.08] tracking-[-0.01em] text-[clamp(1.9rem,3.6vw,3.6rem)]">
@@ -329,7 +138,7 @@ export default function Hero() {
         <motion.div className="absolute inset-0 z-10 bg-white pointer-events-none" style={{ opacity: whiten }} />
         <motion.div className="absolute inset-0 z-10 pointer-events-none" style={{ y: worksY }}>
           <motion.h2
-            className="absolute left-5 md:left-[5%] top-[18%] leading-none tracking-[-0.02em] text-[clamp(3rem,9vw,9rem)]"
+            className="absolute left-5 md:left-[5%] top-[16%] md:top-[18%] leading-none tracking-[-0.02em] text-[clamp(3rem,9vw,9rem)]"
             style={{ color: worksColor, fontFamily: '"Geist", sans-serif', fontWeight: 700 }}
           >
             Works
@@ -338,7 +147,7 @@ export default function Hero() {
 
         {/* ── CTAs ──────────────────────────────────────────────── */}
         <motion.div
-          className="absolute bottom-6 md:bottom-10 left-0 right-0 z-10 flex flex-col-reverse sm:flex-row items-center justify-center gap-3 sm:gap-4 px-5"
+          className="absolute bottom-[max(1.5rem,env(safe-area-inset-bottom))] md:bottom-10 left-0 right-0 z-10 flex flex-col-reverse sm:flex-row items-center justify-center gap-3 sm:gap-4 px-5"
           style={{ opacity: ctaOpacity, pointerEvents: ctaEvents }}
         >
           <motion.button
@@ -376,6 +185,7 @@ export default function Hero() {
           </motion.a>
         </motion.div>
       </div>
+      </motion.div>
       </div>
     </section>
   )

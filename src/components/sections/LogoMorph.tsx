@@ -47,6 +47,11 @@ const FINAL = [0.9, 0.98]  // travel to the closing hero frame: the lower "7", c
 const FINAL_AT = { x: 0.316, y: -0.058 }
 const FINAL_ZOOM = 3
 const FINAL_TILT = 0.12
+// Phones (portrait card): the copy sits on top, so the "7" drops to the lower right and zooms less
+const FINAL_AT_PORTRAIT = { x: 0.26, y: 0.3 }
+const FINAL_ZOOM_PORTRAIT = 1.9
+/** Tall, narrow card (phones): framings and captions switch to their portrait variants */
+const isPortrait = (W: number, H: number) => W < H * 0.8
 // Lateral scene: after the closing frame the camera slides right by this share of the card width
 // (far enough that the "8" ends up peeking in on the left edge)
 export const PAN_FRAC = 1.28
@@ -56,15 +61,16 @@ const STAYING_GLYPHS = [2, 3]
 export const WORKS_DROP = 1
 
 // Logos screen framing (camera level): the "8" peeks in on the left, the logos row sits below centre
-const LATERAL_ZOOM = FINAL_ZOOM
 const LATERAL_PEEK = 0.1    // share of the width the "8" keeps on screen
 const LATERAL_ROW_Y = 0.12  // logos row centre, share of the height below the middle
 function lateralFrame(W: number, H: number, s: number, ox: number, oy: number) {
+  const zoom = isPortrait(W, H) ? FINAL_ZOOM_PORTRAIT : FINAL_ZOOM
   const eightRight = ox + (GLYPH_X[1] + CELL_W * 3) * s
   const rowCy = oy + (GLYPH_Y[1] + CELL_H * 2.5) * s
   return {
-    fx: eightRight + ((0.5 - LATERAL_PEEK) * W) / LATERAL_ZOOM,
-    fy: rowCy - (LATERAL_ROW_Y * H) / LATERAL_ZOOM,
+    fx: eightRight + ((0.5 - LATERAL_PEEK) * W) / zoom,
+    fy: rowCy - (LATERAL_ROW_Y * H) / zoom,
+    zoom,
   }
 }
 
@@ -89,6 +95,7 @@ export const DROP_AT = 0.858                  // morph progress that triggers it
 export const DROP_HOLD_MS = DROP_TOTAL * 1000
 export const DROP_IMPACT_MS = DROP_IMPACT * 1000 // the effect switches on here
 const DROP_TARGET = { x: 372, y: 322 }        // landing point, SVG units (dark space right of the "8")
+const DROP_TARGET_PORTRAIT = { x: 290, y: 188 } // phones: no room beside the "8", it lands in the gap above it
 const CA_GLYPHS = [2, 3]                      // lower "7" and "8" in LOGO_POLYS
 // Physics: the trail grows on an underdamped spring (overshoots, then settles),
 // and a double heartbeat kicks a second spring that makes the pixel blocks jiggle
@@ -100,13 +107,21 @@ const ECHO_BEAT_TRAVEL = 0.9   // s for a beat to run down the whole trail
 
 // Captions, in logo space (SVG units) so they ride the camera. One per beat of the morph.
 // x/y = top-left (or top-right when align is 'right') of the first line; show = [in, out]
-type CaptionSlot = { x: number; y: number; size: number; align: 'left' | 'right'; show: [number, number] }
+type CaptionSlot = { x: number; y: number; size: number; align: 'left' | 'right' | 'center'; show: [number, number] }
 const CAPTION_SLOTS: CaptionSlot[] = [
   { x: -40, y: 95, size: 20, align: 'right', show: [0.06, 0.19] },  // 2 → 4 squares
   { x: -40, y: 290, size: 20, align: 'right', show: [0.21, 0.36] }, // 4 → 8
   { x: 372, y: 30, size: 20, align: 'left', show: [0.39, 0.5] },    // module grid
   { x: -110, y: 60, size: 13, align: 'left', show: [0.6, 0.71] },   // the "1" carves
   { x: 392, y: 292, size: 13, align: 'left', show: [0.8, 0.925] },  // resting on the "8"
+]
+// Phones: no room beside the logo, so the captions sit under it (centred) or above the glyph in focus
+const CAPTION_SLOTS_PORTRAIT: CaptionSlot[] = [
+  { x: LOGO_W / 2, y: LOGO_H + 44, size: 26, align: 'center', show: [0.06, 0.19] },
+  { x: LOGO_W / 2, y: LOGO_H + 44, size: 26, align: 'center', show: [0.21, 0.36] },
+  { x: LOGO_W / 2, y: LOGO_H + 44, size: 26, align: 'center', show: [0.39, 0.5] },
+  { x: 55, y: -40, size: 15, align: 'left', show: [0.6, 0.71] },
+  { x: 120, y: LOGO_H + 22, size: 15, align: 'left', show: [0.8, 0.925] },
 ]
 const CAPTION_FONT = '"Geist", system-ui, sans-serif'
 const CAPTION_IN = 0.035    // progress each word takes to slide in / out
@@ -510,16 +525,19 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
     let rot = TILT * tr
 
     // Closing frame: solve the focus so the lower "7" lands at FINAL_AT on screen
-    const vx = FINAL_AT.x * W
-    const vy = FINAL_AT.y * H
+    const portrait = isPortrait(W, H)
+    const at = portrait ? FINAL_AT_PORTRAIT : FINAL_AT
+    const finalZoom = portrait ? FINAL_ZOOM_PORTRAIT : FINAL_ZOOM
+    const vx = at.x * W
+    const vy = at.y * H
     const c = Math.cos(-FINAL_TILT)
     const n = Math.sin(-FINAL_TILT)
-    const endX = ox + seven.x * s - (vx * c - vy * n) / FINAL_ZOOM
-    const endY = oy + seven.y * s - (vx * n + vy * c) / FINAL_ZOOM
+    const endX = ox + seven.x * s - (vx * c - vy * n) / finalZoom
+    const endY = oy + seven.y * s - (vx * n + vy * c) / finalZoom
     fx = lerp(fx, endX, fin)
     fy = lerp(fy, endY, fin)
     // Pull out a little mid-move, then settle in
-    zoom = lerp(zoom, FINAL_ZOOM, fin) * (1 - 0.22 * Math.sin(Math.PI * fin))
+    zoom = lerp(zoom, finalZoom, fin) * (1 - 0.22 * Math.sin(Math.PI * fin))
     rot = lerp(rot, FINAL_TILT, fin)
 
     // Lateral slide: travel to the logos screen and straighten the roll, so its grid,
@@ -529,7 +547,7 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
       const lat = lateralFrame(W, H, s, ox, oy)
       fx = lerp(fx, lat.fx, slide)
       fy = lerp(fy, lat.fy, slide)
-      zoom = lerp(zoom, LATERAL_ZOOM, slide)
+      zoom = lerp(zoom, lat.zoom, slide)
       rot = lerp(rot, 0, slide)
     }
     // …then down to "Works" (level camera, so a straight vertical move)
@@ -861,7 +879,8 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
     // Captions: word-by-word masked slide in, slide out upwards, riding the camera
     {
       const { s, ox, oy } = layout()
-      CAPTION_SLOTS.forEach((slot, ci) => {
+      const slots = isPortrait(W, H) ? CAPTION_SLOTS_PORTRAIT : CAPTION_SLOTS
+      slots.forEach((slot, ci) => {
         const lines = captionsRef.current[ci]
         const [tin, tout] = slot.show
         if (!lines || p < tin || p > tout) return
@@ -875,7 +894,7 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
           const space = ctx.measureText(' ').width
           const widths = words.map((w) => ctx.measureText(w).width)
           const total = widths.reduce((a, b) => a + b, 0) + space * (words.length - 1)
-          let x = ox + slot.x * s - (slot.align === 'right' ? total : 0)
+          let x = ox + slot.x * s - (slot.align === 'right' ? total : slot.align === 'center' ? total / 2 : 0)
           const y = oy + slot.y * s + li * lh
           words.forEach((word, wi) => {
             const lag = li * CAPTION_LINE_LAG + wi * CAPTION_WORD_LAG
@@ -903,7 +922,8 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
       if (t <= DROP_TOTAL) {
         const { s, ox, oy } = layout()
         const m = ctx.getTransform()
-        const hit = m.transformPoint(new DOMPoint(ox + DROP_TARGET.x * s, oy + DROP_TARGET.y * s))
+        const target = isPortrait(W, H) ? DROP_TARGET_PORTRAIT : DROP_TARGET
+        const hit = m.transformPoint(new DOMPoint(ox + target.x * s, oy + target.y * s))
         ctx.save()
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
         ctx.globalAlpha = 1
@@ -948,7 +968,12 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
   useEffect(() => {
     const onMove = (ev: PointerEvent) => { pointer.current = { x: ev.clientX, y: ev.clientY } }
     const onLeave = () => { pointer.current = null }
+    // A finger has no hover: once it lifts, release whatever it was pressing
+    const onUp = (ev: PointerEvent) => { if (ev.pointerType !== 'mouse') pointer.current = null }
     window.addEventListener('pointermove', onMove, { passive: true })
+    window.addEventListener('pointerdown', onMove, { passive: true })
+    window.addEventListener('pointerup', onUp, { passive: true })
+    window.addEventListener('pointercancel', onUp, { passive: true })
     document.addEventListener('pointerleave', onLeave)
 
 
@@ -1037,6 +1062,9 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
     return () => {
       cancelAnimationFrame(raf)
       window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerdown', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
       document.removeEventListener('pointerleave', onLeave)
     }
   }, [progress])
@@ -1047,7 +1075,9 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
     if (!canvas) return
     const ro = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect
-      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      // Phones: 1.5× is visually identical on this art and saves a lot of fill-rate
+      const coarse = window.matchMedia('(pointer: coarse)').matches
+      const dpr = Math.min(window.devicePixelRatio || 1, coarse ? 1.5 : 2)
       size.current = { w: width, h: height, dpr }
       canvas.width = Math.round(width * dpr)
       canvas.height = Math.round(height * dpr)

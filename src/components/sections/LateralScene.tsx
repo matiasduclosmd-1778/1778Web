@@ -45,14 +45,15 @@ export default function LateralScene({ pan, down }: LateralSceneProps) {
     <motion.div className="absolute inset-0 z-10 pointer-events-none" style={{ x, y }}>
       {/* Headline */}
       <h2
-        className="absolute left-5 right-5 top-[30%] md:top-[33%] text-center text-white leading-[1.15] tracking-[-0.01em] text-[clamp(1.6rem,3.4vw,3.4rem)]"
+        className="absolute left-5 right-5 top-[24%] md:top-[33%] text-center text-white leading-[1.15] tracking-[-0.01em] text-[clamp(1.75rem,3.4vw,3.4rem)]"
         style={{ fontFamily: '"Geist", sans-serif', fontWeight: 700 }}
       >
         <span className="sr-only">{items.map((item) => `${prefix} ${item}.`).join(' ')}</span>
-        <span aria-hidden className="inline-flex items-baseline whitespace-nowrap">
-          {prefix}&nbsp;
+        {/* Phones: the flipping word gets its own line so the longest one still fits */}
+        <span aria-hidden className="inline-flex flex-col items-center md:flex-row md:items-baseline whitespace-nowrap">
+          <span>{prefix}<span className="hidden md:inline">&nbsp;</span></span>
           {/* Sized by the longest word so the centred line never shifts as words change */}
-          <span className="inline-grid text-left overflow-hidden pb-[0.14em] -mb-[0.14em]" style={{ perspective: 600 }}>
+          <span className="inline-grid text-center md:text-left overflow-hidden pb-[0.14em] -mb-[0.14em]" style={{ perspective: 600 }}>
             {items.map((item) => (
               <span key={item} className="invisible [grid-area:1/1]">{item}</span>
             ))}

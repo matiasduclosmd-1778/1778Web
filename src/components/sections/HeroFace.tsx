@@ -7,7 +7,7 @@ const JAW_SPRING = { stiffness: 700, damping: 16 }
 const MOOD_SPRING = { type: 'spring', stiffness: 170, damping: 18, mass: 0.9 } as const
 const VOWELS = /[aeiouáéíóúAEIOUÁÉÍÓÚ]/
 
-const EYE_CLASS = 'block bg-white w-[clamp(18px,2.6vw,40px)] h-[clamp(58px,8.2vw,124px)]'
+const EYE_CLASS = 'block bg-white w-[clamp(26px,2.6vw,40px)] h-[clamp(84px,8.2vw,124px)]'
 
 // ── Expressions ─────────────────────────────────────────────────
 // Eyes and mouth are always rectangles: they only change size and position,
@@ -253,7 +253,7 @@ export default function HeroFace({ phrases, morph, eyesRef }: HeroFaceProps) {
   return (
     <motion.div className="relative flex flex-col items-center" style={{ x: headX, y: headY }}>
       {/* Eyes: gaze (x/y) → expression (shape/tilt) → blink (lid) */}
-      <motion.div className="flex gap-[clamp(40px,6.2vw,100px)]" style={{ opacity: eyesOpacity }}>
+      <motion.div className="flex gap-[clamp(58px,6.2vw,100px)]" style={{ opacity: eyesOpacity }}>
         {([[leftRef, lx, ly, mood.left], [rightRef, rx, ry, mood.right]] as const).map(([ref, x, y, shape], i) => (
           <div key={i} ref={ref}>
             <motion.div style={{ x, y }}>
@@ -277,7 +277,7 @@ export default function HeroFace({ phrases, morph, eyesRef }: HeroFaceProps) {
       <motion.div
         aria-hidden
         style={{ opacity: mouthOpacity }}
-        className="absolute top-full mt-[clamp(40px,6vw,88px)] left-1/2 -translate-x-1/2 w-[min(88vw,900px)] flex justify-center text-[clamp(1.15rem,2.6vw,2.25rem)]"
+        className="absolute top-full mt-[clamp(40px,6vw,88px)] left-1/2 -translate-x-1/2 w-[min(90vw,900px)] flex justify-center text-[clamp(1.3rem,2.6vw,2.25rem)]"
       >
         {/* Closed mouth: a rectangle that only resizes / shifts */}
         <motion.span

@@ -47,7 +47,7 @@ export default function Contactos() {
   const isInView = useInView(ref, { once: true, amount: 'some' })
 
   return (
-    <section id="contactos" className="bg-black py-28 px-4 md:px-8 border-t border-white/5">
+    <section id="contactos" className="bg-black pt-20 pb-[max(5rem,env(safe-area-inset-bottom))] md:py-28 px-5 md:px-8 border-t border-white/5">
       <div className="max-w-3xl mx-auto text-center">
 
         <p className="text-primary text-[10px] sm:text-xs mb-8 tracking-widest uppercase">

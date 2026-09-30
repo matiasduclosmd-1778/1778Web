@@ -13,21 +13,31 @@
 }
 
 /* Lenis — smooth scroll; `lenis-stopped` also blocks native scrolling while a hold is active */
-html.lenis, html.lenis /* Rolling letters on links / buttons (see useRollingLinks) — each letter carries a copy of
+html.lenis, html.lenis body { height: auto; }
+
+/* Rolling letters on links / buttons (see useRollingLinks) — each letter carries a copy of
    itself one line below, revealed as it rolls up */
 .rl-w { white-space: nowrap; }
 .rl { display: inline-block; overflow: clip; vertical-align: top; padding-block: 0.15em; margin-block: -0.15em; }
 .rl-i { display: inline-block; text-shadow: currentColor 0 calc(0.3em + 1lh) 0; will-change: transform; }
 .rl-v .rl-i { text-shadow: currentColor calc(-0.3em - 1lh) 0 0; }
 
-body { height: auto; }
 .lenis.lenis-smooth { scroll-behavior: auto !important; }
 .lenis.lenis-stopped { overflow: hidden; }
+
+html {
+  /* Off-screen scenes (the lateral slide) must never widen the page on phones; clip keeps sticky working */
+  overflow-x: clip;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
 
 body {
   background: #000000;
   margin: 0;
   padding: 0;
+  overflow-x: clip;
+  overscroll-behavior-y: none;
 }
 
 .noise-overlay {
