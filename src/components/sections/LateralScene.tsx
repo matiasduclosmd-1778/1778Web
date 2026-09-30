@@ -21,8 +21,10 @@ const flip = {
 
 const FONT = { fontFamily: '"Geist", sans-serif', fontWeight: 700 }
 const LINE = 'rgba(255,255,255,0.3)'
-// Services grid: two canvas modules tall, one row per half module, sitting right on the logos row
+// Services grid: two canvas modules tall, one row per half module, sitting right on the logos row.
+// On short screens (the modules get big) it shrinks to one module so it never reaches the navbar
 const SERVICES_MODULES = 2
+const SERVICES_MIN_TOP = 0.15 // share of the card height the grid must stay below
 const EASE_WIPE = [0.7, 0, 0.2, 1] as const
 
 /**
@@ -109,7 +111,8 @@ export default function LateralScene({ pan, down }: LateralSceneProps) {
   }, [])
   const portrait = box.W < box.H * 0.8
   const { module, logosTop } = lateralGrid(box.W || 1, box.H || 1)
-  const gridTop = logosTop - module * SERVICES_MODULES
+  const modules = logosTop - module * SERVICES_MODULES >= box.H * SERVICES_MIN_TOP ? SERVICES_MODULES : 1
+  const gridTop = logosTop - module * modules
 
   return (
     <motion.div ref={rootRef} className="absolute inset-0 z-10 pointer-events-none" style={{ x, y }}>
@@ -153,7 +156,7 @@ export default function LateralScene({ pan, down }: LateralSceneProps) {
       {/* Services grid, on the canvas module lines right above the logos row */}
       <motion.ul
         className={`absolute right-0 flex flex-col border-l ${portrait ? 'left-[30%]' : 'left-[66%]'}`}
-        style={{ top: gridTop, height: module * SERVICES_MODULES, borderColor: LINE, pointerEvents: gridEvents }}
+        style={{ top: gridTop, height: module * modules, borderColor: LINE, pointerEvents: gridEvents }}
       >
         {services.map((s, i) => <ServiceRow key={s} label={s} show={inkShow} delay={0.25 + i * 0.1} />)}
       </motion.ul>

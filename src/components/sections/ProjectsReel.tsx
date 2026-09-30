@@ -247,17 +247,28 @@ export default function ProjectsReel({ pos, visible, preload, onSelect }: Projec
     >
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
 
-      {/* The image in front links to the project */}
-      <a
-        href={project.url}
-        target={project.url.startsWith('http') ? '_blank' : undefined}
-        rel="noopener noreferrer"
-        aria-label={project.name}
-        className="absolute"
-        style={{ left: l.left, top: l.top, width: l.w, height: l.h }}
-        onPointerEnter={() => { inside.current = true }}
-        onPointerLeave={() => { inside.current = false }}
-      />
+      {/* The image in front links to the project (a placeholder '#' is just a hover area: following
+          it would jump the page back to the top) */}
+      {project.url && project.url !== '#' ? (
+        <a
+          href={project.url}
+          target={project.url.startsWith('http') ? '_blank' : undefined}
+          rel="noopener noreferrer"
+          aria-label={project.name}
+          className="absolute"
+          style={{ left: l.left, top: l.top, width: l.w, height: l.h }}
+          onPointerEnter={() => { inside.current = true }}
+          onPointerLeave={() => { inside.current = false }}
+        />
+      ) : (
+        <div
+          aria-hidden
+          className="absolute"
+          style={{ left: l.left, top: l.top, width: l.w, height: l.h }}
+          onPointerEnter={() => { inside.current = true }}
+          onPointerLeave={() => { inside.current = false }}
+        />
+      )}
 
       {/* The name is drawn on the canvas (so the liquid trail can smear it); this is for assistive tech */}
       <h3 className="sr-only" aria-live="polite">{project.name}</h3>

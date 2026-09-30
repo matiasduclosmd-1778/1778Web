@@ -153,7 +153,7 @@ export default function Hero() {
           className="absolute left-5 md:left-[5%] top-[15%] md:top-1/2 md:-translate-y-1/2 max-w-[90%]"
           style={{ pointerEvents: finEvents }}
         >
-          <h2 className="text-white leading-[1.08] tracking-[-0.01em] text-[clamp(1.9rem,3.6vw,3.6rem)]">
+          <h2 className="text-white leading-[1.08] tracking-[-0.01em] text-[clamp(1.5rem,8vw,1.9rem)] md:text-[clamp(1.9rem,3.6vw,3.6rem)]">
             {[t.hero.final.line1, t.hero.final.line2].map((line, i) => (
               <span key={i} className="block pb-[0.06em]">
                 <LiquidText show={finShow} delay={i * 0.14} style={{ fontFamily: '"Geist", sans-serif', fontWeight: 700 }}>

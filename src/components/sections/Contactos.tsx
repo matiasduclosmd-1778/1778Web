@@ -107,7 +107,7 @@ export default function Contactos() {
               onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(222,219,200,0.4)')}
             >
               <Instagram className="w-5 h-5" />
-              Check my instagram
+              {t.contactos.instagram}
             </a>
           </motion.div>
 

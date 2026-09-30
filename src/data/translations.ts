@@ -20,7 +20,7 @@ export interface Translations {
     lateral: { prefix: string; items: string[]; services: string[] }
   }
   clientes: { label: string }
-  contactos: { label: string; heading: string; body: string; footer: string }
+  contactos: { label: string; heading: string; body: string; instagram: string; footer: string }
 }
 
 export const translations: Record<Lang, Translations> = {
@@ -58,6 +58,7 @@ export const translations: Record<Lang, Translations> = {
     contactos: {
       label: 'Contacto', heading: 'Hablemos.',
       body:   '¿Tenés un proyecto en mente? Contanos sobre él y trabajemos juntos para hacerlo realidad.',
+      instagram: 'Seguinos en Instagram',
       footer: '© 2026 1778Studio. Todos los derechos reservados.',
     },
   },
@@ -96,6 +97,7 @@ export const translations: Record<Lang, Translations> = {
     contactos: {
       label: 'Contact', heading: "Let's talk.",
       body:   "Have a project in mind? Tell us about it and let's work together to make it happen.",
+      instagram: 'Follow us on Instagram',
       footer: '© 2026 1778Studio. All rights reserved.',
     },
   },
