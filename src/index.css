@@ -12,6 +12,11 @@
   to   { transform: translateX(-50%); }
 }
 
+/* Lenis — smooth scroll; `lenis-stopped` also blocks native scrolling while a hold is active */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-stopped { overflow: hidden; }
+
 body {
   background: #000000;
   margin: 0;

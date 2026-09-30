@@ -11,7 +11,13 @@ export interface Translations {
     home: string; services: string; clients: string; art: string; contact: string
   }
   hero: {
-    h1: string; h2: string; description: string; cta: string
+    phrases: string[]
+    scrollCta: string
+    contactCta: string
+    /** Closing frame of the morph */
+    final: { line1: string; line2: string; cta: string }
+    /** Placeholder captions shown along the logo morph, one entry per beat (lines) */
+    captions: string[][]
   }
   servicios: {
     label: string; location: string
@@ -31,9 +37,23 @@ export const translations: Record<Lang, Translations> = {
       home: 'Home', services: 'Servicios', clients: 'Clientes', art: 'Arte', contact: 'Contactos',
     },
     hero: {
-      h1: 'Agencia', h2: 'Creativa',
-      description: 'Agencia multimedia especializada en diseño de experiencias web. Accesibles, usables y creativas.',
-      cta: 'Contáctanos',
+      phrases: [
+        'Hola. Somos 1778Studio.',
+        'Una agencia creativa.',
+        'Diseñamos experiencias web.',
+        'Accesibles, usables y creativas.',
+        '¿Hablamos?',
+      ],
+      scrollCta: 'Scroll para comenzar',
+      contactCta: 'Contáctenos',
+      final: { line1: '¿ESTÁS LISTO?', line2: 'DISEÑEMOS JUNTOS', cta: 'HABLEMOS' },
+      captions: [
+        ['DOS OJOS,', 'UNA IDEA.'],
+        ['DIVIDIR', 'PARA CONSTRUIR.'],
+        ['CADA MÓDULO', 'TIENE SU LUGAR.'],
+        ['DISEÑO', 'CON SISTEMA.'],
+        ['EXPERIENCIAS WEB', 'BELOW THE LINE'],
+      ],
     },
     servicios: {
       label: 'Agencia mundial', location: 'Buenos Aires, Argentina',
@@ -62,9 +82,23 @@ export const translations: Record<Lang, Translations> = {
       home: 'Home', services: 'Services', clients: 'Clients', art: 'Art', contact: 'Contact',
     },
     hero: {
-      h1: 'Creative', h2: 'Agency',
-      description: 'Multimedia agency specialized in web experience design. Accessible, usable and creative.',
-      cta: 'Contact us',
+      phrases: [
+        'Hi. We are 1778Studio.',
+        'A creative agency.',
+        'We design web experiences.',
+        'Accessible, usable and creative.',
+        "Let's talk?",
+      ],
+      scrollCta: 'Scroll to begin',
+      contactCta: 'Contact us',
+      final: { line1: 'ARE YOU READY?', line2: "LET'S DESIGN TOGETHER", cta: "LET'S TALK" },
+      captions: [
+        ['TWO EYES,', 'ONE IDEA.'],
+        ['SPLIT', 'TO BUILD.'],
+        ['EVERY MODULE', 'HAS ITS PLACE.'],
+        ['DESIGN', 'WITH A SYSTEM.'],
+        ['WEB EXPERIENCES', 'BELOW THE LINE'],
+      ],
     },
     servicios: {
       label: 'Worldwide agency', location: 'Buenos Aires, Argentina',
