@@ -1,9 +1,10 @@
 import { motion, useScroll, useSpring, useTransform, useMotionValueEvent } from 'framer-motion'
-import { ArrowDown, ArrowRight } from 'lucide-react'
+import { ArrowDown } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useLang } from '@/contexts/LangContext'
 import { scrollTo, holdThenGlide, isScrollLocked } from '@/hooks/useLenis'
-import { LiquidText } from '@/components/ui'
+import { LiquidText, PillLink } from '@/components/ui'
+import { WHATSAPP_URL } from '@/data/contact'
 import HeroFace from './HeroFace'
 import LogoMorph, { PAN_FRAC, DROP_AT, DROP_IMPACT_MS, WORKS_DROP } from './LogoMorph'
 import LateralScene from './LateralScene'
@@ -170,16 +171,15 @@ export default function Hero() {
               </span>
             ))}
           </h2>
-          <motion.a
-            href="https://api.whatsapp.com/send/?phone=5491132192293&text&type=phone_number&app_absent=0"
+          <PillLink
+            href={WHATSAPP_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="group mt-6 md:mt-9 inline-flex items-center gap-2 text-xs md:text-sm tracking-[0.04em] text-white/45 hover:text-white transition-colors duration-300"
-            style={{ opacity: finCta, y: finCtaY, fontFamily: '"Geist", sans-serif', fontWeight: 700 }}
+            className="mt-6 md:mt-9"
+            style={{ opacity: finCta, y: finCtaY }}
           >
             {t.hero.final.cta}
-            <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
-          </motion.a>
+          </PillLink>
         </motion.div>
         </motion.div>
 
@@ -221,20 +221,16 @@ export default function Hero() {
             </span>
           </motion.button>
 
-          <motion.a
-            href="https://api.whatsapp.com/send/?phone=5491132192293&text&type=phone_number&app_absent=0"
+          <PillLink
+            href={WHATSAPP_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="group inline-flex items-center gap-2 hover:gap-3 transition-all duration-300 bg-primary rounded-full pl-5 pr-1.5 py-1.5 font-medium text-sm sm:text-base text-black"
             initial={{ y: 16, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.7, delay: 1.35, ease: [0.16, 1, 0.3, 1] }}
           >
             {t.hero.contactCta}
-            <span className="bg-black rounded-full w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
-              <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#DEDBC8]" />
-            </span>
-          </motion.a>
+          </PillLink>
         </motion.div>
       </div>
       </motion.div>

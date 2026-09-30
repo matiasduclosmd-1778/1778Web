@@ -17,7 +17,7 @@ export interface Translations {
     /** Label on the pill the pixel hand drops on the "8" */
     effectLabel: string
     /** Lateral scene after the closing frame: "<prefix> <item>", the item flipping in a loop */
-    lateral: { prefix: string; items: string[]; services: string[] }
+    lateral: { prefix: string; items: string[]; services: string[]; cta: string }
   }
   clientes: { label: string }
   contactos: { label: string; heading: string; body: string; instagram: string; footer: string }
@@ -39,7 +39,7 @@ export const translations: Record<Lang, Translations> = {
       ],
       scrollCta: 'Scroll para comenzar',
       contactCta: 'Contáctenos',
-      final: { line1: '¿ESTÁS LISTO?', line2: 'DISEÑEMOS JUNTOS', cta: 'HABLEMOS' },
+      final: { line1: '¿ESTÁS LISTO?', line2: 'DISEÑEMOS JUNTOS', cta: 'Hablemos' },
       captions: [
         ['DOS OJOS,', 'UNA IDEA.'],
         ['DIVIDIR', 'PARA CONSTRUIR.'],
@@ -52,6 +52,7 @@ export const translations: Record<Lang, Translations> = {
         prefix: 'Desarrollamos',
         items: ['sistemas de diseño', 'ideas ganadoras', 'conceptos', 'frontEnd creativo'],
         services: ['UX & UI', 'Branding', 'Multimedia works', 'Atomic systems'],
+        cta: 'TRABAJEMOS JUNTOS',
       },
     },
     clientes:  { label: 'Clientes frecuentes' },
@@ -78,7 +79,7 @@ export const translations: Record<Lang, Translations> = {
       ],
       scrollCta: 'Scroll to begin',
       contactCta: 'Contact us',
-      final: { line1: 'ARE YOU READY?', line2: "LET'S DESIGN TOGETHER", cta: "LET'S TALK" },
+      final: { line1: 'ARE YOU READY?', line2: "LET'S DESIGN TOGETHER", cta: "Let's talk" },
       captions: [
         ['TWO EYES,', 'ONE IDEA.'],
         ['SPLIT', 'TO BUILD.'],
@@ -91,6 +92,7 @@ export const translations: Record<Lang, Translations> = {
         prefix: 'We develop',
         items: ['design systems', 'winning ideas', 'concepts', 'creative front-end'],
         services: ['UX & UI', 'Branding', 'Multimedia works', 'Atomic systems'],
+        cta: "LET'S WORK TOGETHER",
       },
     },
     clientes:  { label: 'Frequent clients' },

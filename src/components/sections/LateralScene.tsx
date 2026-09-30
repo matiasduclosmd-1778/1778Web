@@ -3,7 +3,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as Reac
 import { useLang } from '@/contexts/LangContext'
 import { PAN_FRAC, WORKS_DROP, lateralGrid } from './LogoMorph'
 import { CLIENT_LOGOS } from '@/data/clients'
-import { LiquidText } from '@/components/ui'
+import { LiquidText, PillLink } from '@/components/ui'
+import { WHATSAPP_URL } from '@/data/contact'
 
 // The scene the camera slides into after the hero's closing frame:
 // "Desarrollamos …" with a word that flips like a calendar, the services grid on the right,
@@ -77,7 +78,7 @@ interface LateralSceneProps {
 
 export default function LateralScene({ pan, down }: LateralSceneProps) {
   const { t } = useLang()
-  const { prefix, items, services } = t.hero.lateral
+  const { prefix, items, services, cta } = t.hero.lateral
 
   // The word after "Desarrollamos" flips every 0.5 s, looping — only while the scene is on screen
   // (and stops once the camera has come down onto Works)
@@ -163,6 +164,24 @@ export default function LateralScene({ pan, down }: LateralSceneProps) {
           <ServiceRow key={s} label={s} show={inkShow} delay={0.25 + i * 0.1} maxSize={((module * modules) / services.length) * 0.6} />
         ))}
       </motion.ul>
+
+      {/* Call to action: centred in the grid row right below the logos (desktop: on the right;
+          phones: centred) */}
+      <motion.div
+        className={`absolute flex items-center ${portrait ? 'left-0 right-0 justify-center' : 'right-[4%]'}`}
+        style={{ top: logosTop + module, height: module, pointerEvents: gridEvents }}
+      >
+        <PillLink
+          href={WHATSAPP_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          initial={false}
+          animate={{ opacity: inkShow ? 1 : 0, y: inkShow ? 0 : 12 }}
+          transition={{ duration: 0.7, delay: inkShow ? 0.7 : 0, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {cta}
+        </PillLink>
+      </motion.div>
 
       {/* Logos are drawn inside the grid by LogoMorph; this list is for assistive tech */}
       <ul className="sr-only" aria-label={t.clientes.label}>
