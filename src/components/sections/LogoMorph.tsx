@@ -543,7 +543,10 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
 
     // Closing frame: solve the focus so the lower "7" lands at FINAL_AT on screen
     const portrait = isPortrait(W, H)
-    const at = portrait ? FINAL_AT_PORTRAIT : FINAL_AT
+    // Stubbier phones (e.g. 360×640) have less room under the copy: the "7" sits a bit lower there
+    const at = portrait
+      ? { x: FINAL_AT_PORTRAIT.x, y: FINAL_AT_PORTRAIT.y + Math.min(0.12, Math.max(0, W / H - 0.46)) * 1.4 }
+      : FINAL_AT
     const finalZoom = portrait ? FINAL_ZOOM_PORTRAIT : FINAL_ZOOM
     const vx = at.x * W
     const vy = at.y * H

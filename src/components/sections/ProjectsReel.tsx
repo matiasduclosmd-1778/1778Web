@@ -38,14 +38,16 @@ function beat(t: number) {
 /** Active rect for a card of W × H (desktop: centred, ~45% wide; phones: nearly full width) */
 function layoutFor(W: number, H: number) {
   const portrait = W < H * 0.8
-  const w = portrait ? W * 0.84 : Math.min(W * 0.45, H * 0.44 * 1.6)
+  // Short screens (a phone on its side): a smaller image, higher up, so name + dots still fit
+  const short = !portrait && H < 520
+  const w = portrait ? W * 0.84 : Math.min(W * 0.45, H * (short ? 0.4 : 0.44) * 1.6)
   const h = w / 1.6
-  const top = portrait ? H * 0.36 : H * 0.34
+  const top = portrait ? H * 0.36 : H * (short ? 0.27 : 0.34)
   return { w, h, top, left: (W - w) / 2, step: w + (portrait ? W * 0.1 : W * 0.06) }
 }
 
-/** Name size scales with the card */
-const nameSizeFor = (W: number) => Math.min(106, Math.max(34, 0.066 * W))
+/** Name size scales with the card (and never outgrows a short one) */
+const nameSizeFor = (W: number, H: number) => Math.min(106, Math.max(34, 0.066 * W), H * 0.11)
 
 interface ProjectsReelProps {
   /** Continuous project index (0 … n-1), already smoothed */
@@ -207,7 +209,7 @@ export default function ProjectsReel({ pos, visible, preload, onSelect }: Projec
       const titles = [{ text: PROJECTS[tl.cur].name, alpha: e, x: tl.dir * slide * (1 - e) }]
       if (tl.prev >= 0 && e < 1) titles.unshift({ text: PROJECTS[tl.prev].name, alpha: 1 - e, x: -tl.dir * slide * e })
       const l = layoutFor(W, H)
-      const nameSize = nameSizeFor(W)
+      const nameSize = nameSizeFor(W, H)
       const since = t - enteredAt
       const reveal = PROJECTS.map((_, i) => reduceMotion
         ? 1
@@ -244,7 +246,7 @@ export default function ProjectsReel({ pos, visible, preload, onSelect }: Projec
   activeRef.current = active
   const l = layoutFor(box.W || 1, box.H || 1)
   const project = PROJECTS[active]
-  const nameSize = nameSizeFor(box.W)
+  const nameSize = nameSizeFor(box.W, box.H || 1)
   const go = (i: number) => onSelect(Math.max(0, Math.min(PROJECTS.length - 1, i)))
 
   const trackPointer = (e: React.PointerEvent) => {

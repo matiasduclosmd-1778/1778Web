@@ -31,7 +31,7 @@ const EASE_WIPE = [0.7, 0, 0.2, 1] as const
  * One service row. Hovering floods it white from the edge the cursor came in through, the label
  * turns black and slides in a touch; leaving drains it out through the edge the cursor leaves by.
  */
-function ServiceRow({ label, show, delay }: { label: string; show: boolean; delay: number }) {
+function ServiceRow({ label, show, delay, maxSize }: { label: string; show: boolean; delay: number; maxSize: number }) {
   const [on, setOn] = useState(false)
   const [from, setFrom] = useState<'top' | 'bottom'>('bottom')
   const edge = (e: ReactPointerEvent<HTMLLIElement>) => {
@@ -56,7 +56,8 @@ function ServiceRow({ label, show, delay }: { label: string; show: boolean; dela
       />
       <motion.span
         className="relative pr-3 md:pr-4 uppercase leading-none tracking-[-0.01em] text-[clamp(0.85rem,2vw,1.9rem)] whitespace-nowrap"
-        style={FONT}
+        // Never taller than ~60% of its row (rows get short on a phone held sideways)
+        style={{ ...FONT, fontSize: `min(clamp(0.85rem, 2vw, 1.9rem), ${maxSize}px)` }}
         initial={false}
         animate={{ color: on ? '#000000' : '#ffffff', x: on ? -10 : 0 }}
         transition={{ duration: 0.45, ease: EASE_WIPE, delay: on ? 0.08 : 0 }}
@@ -158,7 +159,9 @@ export default function LateralScene({ pan, down }: LateralSceneProps) {
         className={`absolute right-0 flex flex-col border-l ${portrait ? 'left-[30%]' : 'left-[66%]'}`}
         style={{ top: gridTop, height: module * modules, borderColor: LINE, pointerEvents: gridEvents }}
       >
-        {services.map((s, i) => <ServiceRow key={s} label={s} show={inkShow} delay={0.25 + i * 0.1} />)}
+        {services.map((s, i) => (
+          <ServiceRow key={s} label={s} show={inkShow} delay={0.25 + i * 0.1} maxSize={((module * modules) / services.length) * 0.6} />
+        ))}
       </motion.ul>
 
       {/* Logos are drawn inside the grid by LogoMorph; this list is for assistive tech */}

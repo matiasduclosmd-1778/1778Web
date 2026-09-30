@@ -158,7 +158,7 @@ export default function Hero() {
         {/* ── Closing hero frame (slides out left with the camera) ─ */}
         <motion.div className="absolute inset-0 z-10 pointer-events-none" style={{ x: finalShift }}>
         <motion.div
-          className="absolute left-5 md:left-[5%] top-[15%] md:top-1/2 md:-translate-y-1/2 max-w-[90%]"
+          className="absolute left-5 md:left-[5%] top-[13%] md:top-1/2 md:-translate-y-1/2 max-w-[90%]"
           style={{ pointerEvents: finEvents }}
         >
           <h2 className="text-white leading-[1.08] tracking-[-0.01em] text-[clamp(1.5rem,8vw,1.9rem)] md:text-[clamp(1.9rem,3.6vw,3.6rem)]">
