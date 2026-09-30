@@ -50,8 +50,9 @@ const fragmentShader = /* glsl */ `
   void main() {
     if (uAmt <= 0.001) { gl_FragColor = vec4(0.0); return; }
 
-    // Snap to the pixel-block grid; every block gets its own random seed
-    vec2 cell = floor(gl_FragCoord.xy / uPixel);
+    // One fragment per pixel block (this pass renders at block resolution); every block gets its
+    // own random seed
+    vec2 cell = floor(gl_FragCoord.xy);
     float seed = hash(cell);
     vec2 uv = (cell + 0.5) * uPixel / uRes;
 
@@ -98,11 +99,23 @@ const fragmentShader = /* glsl */ `
     col = 1.0 - exp(-col * 1.8);                              // filmic shoulder
     // Posterise with an ordered dither → crisp pixel-art colour steps
     col = floor(col * 5.0 + dither * 0.999) / 5.0;
-    // LED-style gap between blocks
+    gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
+  }
+`
+
+// Second pass, at full resolution: each screen pixel reads its block's colour (nearest) and adds the
+// LED-style gap between blocks. The expensive trail is computed once per block, not per pixel
+const screenFragment = /* glsl */ `
+  precision highp float;
+  uniform sampler2D uBlocks;
+  uniform vec2 uGrid;    // blocks across / down
+  uniform float uPixel;  // block size, device px
+  void main() {
+    vec2 cell = floor(gl_FragCoord.xy / uPixel);
+    vec3 col = texture2D(uBlocks, (cell + 0.5) / uGrid).rgb;
     vec2 f = fract(gl_FragCoord.xy / uPixel);
     float gap = step(1.0 / uPixel, f.x) * step(1.0 / uPixel, f.y);
     col *= mix(0.35, 1.0, gap);
-    col = clamp(col, 0.0, 1.0);
     gl_FragColor = vec4(col, max(col.r, max(col.g, col.b)));  // premultiplied
   }
 `
@@ -144,6 +157,31 @@ export function createEchoFx(canvas: HTMLCanvasElement, mask: HTMLCanvasElement)
   const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material)
   scene.add(quad)
 
+  // Block-resolution target for the first pass
+  const blocks = new THREE.WebGLRenderTarget(1, 1, {
+    minFilter: THREE.NearestFilter,
+    magFilter: THREE.NearestFilter,
+    depthBuffer: false,
+    generateMipmaps: false,
+  })
+  const screenMaterial = new THREE.ShaderMaterial({
+    vertexShader,
+    fragmentShader: screenFragment,
+    uniforms: {
+      uBlocks: { value: blocks.texture },
+      uGrid: { value: new THREE.Vector2(1, 1) },
+      uPixel: { value: 6 },
+    },
+    blending: THREE.NoBlending,
+    depthTest: false,
+    depthWrite: false,
+  })
+  const screenScene = new THREE.Scene()
+  screenScene.add(new THREE.Mesh(quad.geometry, screenMaterial))
+  // Compile both programs now, not on the first frame of the drop (that froze the scroll)
+  renderer.compile(scene, camera)
+  renderer.compile(screenScene, camera)
+
   let width = 1
   let height = 1
   let cleared = true
@@ -160,7 +198,14 @@ export function createEchoFx(canvas: HTMLCanvasElement, mask: HTMLCanvasElement)
     renderer.setPixelRatio(ratio)
     renderer.setSize(width, height, false)
     renderer.getDrawingBufferSize(material.uniforms.uRes.value)
-    material.uniforms.uPixel.value = Math.max(2, Math.round(PIXEL_CSS * ratio))
+    const px = Math.max(2, Math.round(PIXEL_CSS * ratio))
+    material.uniforms.uPixel.value = px
+    screenMaterial.uniforms.uPixel.value = px
+    const res = material.uniforms.uRes.value
+    const cols = Math.ceil(res.x / px)
+    const rows = Math.ceil(res.y / px)
+    blocks.setSize(cols, rows)
+    screenMaterial.uniforms.uGrid.value.set(cols, rows)
   }
 
   return {
@@ -198,12 +243,17 @@ export function createEchoFx(canvas: HTMLCanvasElement, mask: HTMLCanvasElement)
       material.uniforms.uTime.value = time
       material.uniforms.uKick.value = kick
       material.uniforms.uMelt.value.set(meltPx / width, meltPx / height)
+      renderer.setRenderTarget(blocks)
       renderer.render(scene, camera)
+      renderer.setRenderTarget(null)
+      renderer.render(screenScene, camera)
     },
 
     dispose() {
       texture.dispose()
       material.dispose()
+      screenMaterial.dispose()
+      blocks.dispose()
       quad.geometry.dispose()
       renderer.dispose()
     },

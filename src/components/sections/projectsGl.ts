@@ -183,7 +183,8 @@ const trailFragment = /* glsl */ `
 const postFragment = /* glsl */ `
   precision highp float;
   uniform sampler2D uScene;    // sheets, premultiplied
-  uniform sampler2D uText;     // title layer (straight alpha)
+  uniform sampler2D uText;     // title layer (straight alpha): a horizontal band, not the whole view
+  uniform vec2 uTextBand;      // band bottom and height, in uv (y up)
   uniform sampler2D uTrail;
   uniform float uSmear;
   uniform float uCA;
@@ -192,7 +193,8 @@ const postFragment = /* glsl */ `
 
   vec4 layer(vec2 uv) {
     vec4 s = texture2D(uScene, uv);
-    vec4 t = texture2D(uText, uv);
+    float ty = (uv.y - uTextBand.x) / uTextBand.y;
+    vec4 t = ty > 0.0 && ty < 1.0 ? texture2D(uText, vec2(uv.x, ty)) : vec4(0.0);
     t.rgb *= t.a;
     return s * (1.0 - t.a) + t;
   }
@@ -383,6 +385,7 @@ export function createReel(canvas: HTMLCanvasElement, images: string[]) {
     uniforms: {
       uScene: { value: sceneRT.texture },
       uText: { value: textTex },
+      uTextBand: { value: new THREE.Vector2(0, 1) },
       uTrail: { value: null },
       uSmear: { value: REEL_PARAMS.smear },
       uCA: { value: REEL_PARAMS.trailCA },
@@ -398,14 +401,34 @@ export function createReel(canvas: HTMLCanvasElement, images: string[]) {
   let H = 1
   let DPR = 1
 
+  // Compile every program now (the reel is created while the camera is still on the logos screen),
+  // not on the first frame of the Works entrance
+  renderer.compile(scene, camera)
+  renderer.compile(trailScene, quadCam)
+  renderer.compile(postScene, quadCam)
+
   const drawTitles = (f: ReelFrame) => {
     const tr = Math.min(1, Math.max(0, f.titleReveal))
-    const key = JSON.stringify([f.titles, f.titleY, f.titleSize, f.ghost.toFixed(2), tr.toFixed(3), W, H])
+    // The ghost follows the scroll speed: rounded to 0.25 px so it doesn't redraw for invisible changes
+    const ghost = Math.round(f.ghost * 4) / 4
+    const key = JSON.stringify([f.titles, f.titleY, f.titleSize, ghost, tr.toFixed(3), W, H])
     if (key === lastTitleKey) return
     lastTitleKey = key
+    // Only a band around the title is drawn and uploaded (a full-view canvas was ~20 MB per frame
+    // while the ghost moved)
+    const bandTop = f.titleY - f.titleSize
+    const bandH = f.titleSize * 2
+    const cw = Math.round(W * DPR)
+    const ch = Math.max(1, Math.round(bandH * DPR))
+    if (textCanvas.width !== cw || textCanvas.height !== ch) {
+      textCanvas.width = cw
+      textCanvas.height = ch
+      textTex.dispose() // new size → new GPU storage
+    }
+    ;(postMat.uniforms.uTextBand.value as THREE.Vector2).set(1 - (bandTop + bandH) / H, bandH / H)
     const ctx = textCtx
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0)
-    ctx.clearRect(0, 0, W, H)
+    ctx.setTransform(DPR, 0, 0, DPR, 0, -bandTop * DPR)
+    ctx.clearRect(0, bandTop, W, bandH)
     ctx.font = `700 ${f.titleSize}px ${TITLE_FONT}`
     ;(ctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = `${-0.02 * f.titleSize}px`
     ctx.textAlign = 'center'
@@ -417,12 +440,12 @@ export function createReel(canvas: HTMLCanvasElement, images: string[]) {
       const y = f.titleY + (1 - tr) * f.titleSize * 0.35
       const alpha = t.alpha * tr
       // Ghost: red / cyan copies along X with the scroll speed
-      if (Math.abs(f.ghost) > 0.05) {
+      if (ghost !== 0) {
         ctx.globalAlpha = alpha * 0.75
         ctx.fillStyle = 'rgb(255,40,60)'
-        ctx.fillText(t.text, x + f.ghost, y)
+        ctx.fillText(t.text, x + ghost, y)
         ctx.fillStyle = 'rgb(0,230,255)'
-        ctx.fillText(t.text, x - f.ghost, y)
+        ctx.fillText(t.text, x - ghost, y)
       }
       ctx.globalAlpha = alpha
       ctx.fillStyle = '#ffffff'
@@ -451,8 +474,6 @@ export function createReel(canvas: HTMLCanvasElement, images: string[]) {
       const th = Math.max(1, Math.round(ph * TRAIL_SCALE))
       trailA.setSize(tw, th)
       trailB.setSize(tw, th)
-      textCanvas.width = pw
-      textCanvas.height = ph
       lastTitleKey = ''
     },
     render(f: ReelFrame) {

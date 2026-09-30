@@ -337,6 +337,8 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
   const pointer = useRef<{ x: number; y: number } | null>(null)
   // The card is on screen (false once the page has scrolled past the hero)
   const onScreen = useRef(true)
+  // Bloom mip chain: the frame at 1/2, 1/4 … 1/32 size
+  const bloom = useRef(Array.from({ length: 5 }, () => document.createElement('canvas')))
   const presses = useRef(new Map<number, Press>())
   const lastPieces = useRef<{ q: Quad; alpha: number }[]>([])
   const captionsRef = useRef(captions)
@@ -950,11 +952,32 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
       }
     }
 
-    // Glow, flaring briefly each time a formation locks in
+    // Glow, flaring briefly each time a formation locks in. A cheap in-canvas bloom: the frame is
+    // halved a few times (each step averages the last) and the soft copies are drawn back, enlarged,
+    // behind what's already there. (It used to be two CSS drop-shadows on the full-screen layer,
+    // re-filtered every frame — the heaviest thing on the page in Safari.)
     const flare = FLASHES.reduce((m, [at, amt]) => Math.max(m, amt * Math.exp(-(((p - at) / 0.022) ** 2))), 0)
-    wrap.style.filter =
-      `drop-shadow(0 0 ${4 + flare * 10}px rgba(255,255,255,${0.35 + flare * 0.45})) ` +
-      `drop-shadow(0 0 ${18 + flare * 40}px rgba(255,255,255,${0.12 + flare * 0.3}))`
+    const levels = bloom.current
+    let src: HTMLCanvasElement = canvas
+    for (let i = 0; i < levels.length; i++) {
+      const lv = levels[i]
+      const w = Math.max(1, canvas.width >> (i + 1))
+      const h = Math.max(1, canvas.height >> (i + 1))
+      if (lv.width !== w || lv.height !== h) { lv.width = w; lv.height = h }
+      const g = lv.getContext('2d')!
+      g.clearRect(0, 0, w, h)
+      g.drawImage(src, 0, 0, w, h)
+      src = lv
+    }
+    ctx.save()
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.globalCompositeOperation = 'destination-over'
+    ctx.imageSmoothingEnabled = true
+    ctx.globalAlpha = Math.min(1, 0.32 + flare * 0.5)   // tight halo
+    ctx.drawImage(levels[2], 0, 0, canvas.width, canvas.height)
+    ctx.globalAlpha = Math.min(1, 0.2 + flare * 0.45)   // wide halo
+    ctx.drawImage(levels[4], 0, 0, canvas.width, canvas.height)
+    ctx.restore()
   }, [progress, captureEyes, cameraAt, layout, piecesAt, gridAt, reduceMotion])
 
   useMotionValueEvent(progress, 'change', draw)
