@@ -1,6 +1,8 @@
 import { MotionValue, useMotionValueEvent, useReducedMotion } from 'framer-motion'
 import { RefObject, useCallback, useEffect, useRef } from 'react'
 import type { EchoFx } from './echoFx'
+import { CLIENT_LOGOS } from '@/data/clients'
+import { drawDropScene, DROP_TOTAL, DROP_IMPACT } from './dropScene'
 
 /** Below this progress the DOM face is shown; above it, the canvas takes over */
 export const MORPH_HANDOFF = 0.004
@@ -45,6 +47,29 @@ const FINAL = [0.9, 0.98]  // travel to the closing hero frame: the lower "7", c
 const FINAL_AT = { x: 0.316, y: -0.058 }
 const FINAL_ZOOM = 3
 const FINAL_TILT = 0.12
+// Lateral scene: after the closing frame the camera slides right by this share of the card width
+// (far enough that the "8" ends up peeking in on the left edge)
+export const PAN_FRAC = 1.28
+// The lower "7" and "8" (they carry the chromatic aberration) stay through the slide; the top row clears
+const STAYING_GLYPHS = [2, 3]
+// Logos screen framing (camera level): the "8" peeks in on the left, the logos row sits below centre
+const LATERAL_ZOOM = FINAL_ZOOM
+const LATERAL_PEEK = 0.1    // share of the width the "8" keeps on screen
+const LATERAL_ROW_Y = 0.12  // logos row centre, share of the height below the middle
+function lateralFrame(W: number, H: number, s: number, ox: number, oy: number) {
+  const eightRight = ox + (GLYPH_X[1] + CELL_W * 3) * s
+  const rowCy = oy + (GLYPH_Y[1] + CELL_H * 2.5) * s
+  return {
+    fx: eightRight + ((0.5 - LATERAL_PEEK) * W) / LATERAL_ZOOM,
+    fy: rowCy - (LATERAL_ROW_Y * H) / LATERAL_ZOOM,
+  }
+}
+
+// Client logos ride inside one module row of the grid (so they tilt with it) in the lateral scene
+const LOGO_ROW = { glyphRow: 1, row: 2 } // between module lines 2 and 3 of the lower glyph row
+const LOGO_SPEED = 0.55                  // module heights per second
+const LOGO_HEIGHT = 0.208                // logo height, share of the row
+const LOGO_GAP = 1                       // gap between logos, in module heights
 const CARVE_LEN = 0.06     // how long each module takes to settle
 const SETTLED = PAN[1] + 0.005
 const FLASHES = [[S1[1], 0.35], [S2[1], 0.5], [FINAL[1], 0.6]] as const
@@ -54,6 +79,13 @@ const ECHO_DIR_EIGHT = { x: 0.88, y: 0.47 }   // screen-space trail direction on
 const ECHO_DIR_FINAL = { x: -0.34, y: 0.94 }  // …and on the closing "7" (down, away from the edge)
 const ECHO_LENGTH = 0.34                      // trail length, fraction of the card's larger side
 const ECHO_MELT = 16                          // CSS px of glyph edge that dissolves into pixels
+
+// Drag & drop beat on the "8": a pixel hand drops an "aberración cromática" pill on it,
+// which switches the echo on for good on the lower "7" and the "8"
+export const DROP_AT = 0.858                  // morph progress that triggers it (Hero also holds the scroll here)
+export const DROP_HOLD_MS = DROP_TOTAL * 1000
+const DROP_TARGET = { x: 372, y: 322 }        // landing point, SVG units (dark space right of the "8")
+const CA_GLYPHS = [2, 3]                      // lower "7" and "8" in LOGO_POLYS
 // Physics: the trail grows on an underdamped spring (overshoots, then settles),
 // and a double heartbeat kicks a second spring that makes the pixel blocks jiggle
 const ECHO_GROW_SPRING = { k: 70, c: 8 }
@@ -234,11 +266,19 @@ interface LogoMorphProps {
   progress: MotionValue<number>
   /** Lines for each caption slot (CAPTION_SLOTS) */
   captions: string[][]
+  /** 0 → 1: lateral camera slide after the closing frame */
+  pan?: MotionValue<number>
+  /** Small label written on the logos row */
+  clientsLabel?: string
+  /** Text on the dragged pill */
+  effectLabel?: string
   /** The two DOM eyes the morph starts from */
   eyesRef: RefObject<(HTMLElement | null)[]>
 }
 
-export default function LogoMorph({ progress, eyesRef, captions }: LogoMorphProps) {
+export default function LogoMorph({ progress, eyesRef, captions, pan, clientsLabel = '', effectLabel = '' }: LogoMorphProps) {
+  const panRef = useRef(pan)
+  panRef.current = pan
   const reduceMotion = useReducedMotion()
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -265,6 +305,16 @@ export default function LogoMorph({ progress, eyesRef, captions }: LogoMorphProp
   const lastPieces = useRef<{ q: Quad; alpha: number }[]>([])
   const captionsRef = useRef(captions)
   captionsRef.current = captions
+  const labelRef = useRef(clientsLabel)
+  labelRef.current = clientsLabel
+  const effectLabelRef = useRef(effectLabel)
+  effectLabelRef.current = effectLabel
+  // Drag & drop beat: when it started (ms), and whether the effect is switched on for good
+  const drop = useRef<{ start: number | null; on: boolean }>({ start: null, on: false })
+  const reduceMotionRef = useRef(reduceMotion)
+  reduceMotionRef.current = reduceMotion
+  // Client logos pre-rendered as white silhouettes
+  const logoSprites = useRef<{ img: HTMLCanvasElement; aspect: number }[]>([])
 
   const captureEyes = useCallback(() => {
     const canvas = canvasRef.current
@@ -467,6 +517,17 @@ export default function LogoMorph({ progress, eyesRef, captions }: LogoMorphProp
     // Pull out a little mid-move, then settle in
     zoom = lerp(zoom, FINAL_ZOOM, fin) * (1 - 0.22 * Math.sin(Math.PI * fin))
     rot = lerp(rot, FINAL_TILT, fin)
+
+    // Lateral slide: travel to the logos screen and straighten the roll, so its grid,
+    // logos row and copy end up level and centred
+    const slide = panRef.current?.get() ?? 0
+    if (slide > 0) {
+      const lat = lateralFrame(W, H, s, ox, oy)
+      fx = lerp(fx, lat.fx, slide)
+      fy = lerp(fy, lat.fy, slide)
+      zoom = lerp(zoom, LATERAL_ZOOM, slide)
+      rot = lerp(rot, 0, slide)
+    }
     return { fx, fy, zoom, rot }
   }, [layout])
 
@@ -509,7 +570,10 @@ export default function LogoMorph({ progress, eyesRef, captions }: LogoMorphProp
     // World → SVG units
     const x = (wx - ox) / s
     const y = (wy - oy) / s
-    return LOGO_POLYS.findIndex((poly) => {
+    // Glyphs hidden by the lateral slide can't be hovered
+    const sliding = (panRef.current?.get() ?? 0) > 0.05
+    return LOGO_POLYS.findIndex((poly, g) => {
+      if (sliding && !STAYING_GLYPHS.includes(g)) return false
       let inside = false
       for (let i = 0, j = poly.length - 2; i < poly.length; j = i, i += 2) {
         const [x1, y1, x2, y2] = [poly[i], poly[i + 1], poly[j], poly[j + 1]]
@@ -586,8 +650,13 @@ export default function LogoMorph({ progress, eyesRef, captions }: LogoMorphProp
       ctx.stroke()
 
       // Radial falloff (only the grid is on the canvas at this point)
+      // While sliding sideways the grid keeps filling the new view
+      const slid = panRef.current?.get() ?? 0
+      const mcx = lerp(grid.cx, cam.fx, slid)
+      const mcy = lerp(grid.cy, cam.fy, slid)
+      const R2 = R * (1 + slid)
       if (R > 1) {
-        const mask = ctx.createRadialGradient(grid.cx, grid.cy, 0, grid.cx, grid.cy, R)
+        const mask = ctx.createRadialGradient(mcx, mcy, 0, mcx, mcy, R2)
         mask.addColorStop(0, 'rgba(0,0,0,1)')
         mask.addColorStop(0.35, 'rgba(0,0,0,0.9)')
         mask.addColorStop(1, 'rgba(0,0,0,0)')
@@ -606,8 +675,13 @@ export default function LogoMorph({ progress, eyesRef, captions }: LogoMorphProp
     // Hover echo — while resting on the "8", and on the closing "7" frame
     const atEight = clamp01(1 - Math.max(PAN[1] - p, p - FINAL[0], 0) / 0.015)
     const atFinal = clamp01((p - (FINAL[1] - 0.02)) / 0.02)
-    const zone = Math.max(atEight, atFinal)
-    const amts = echo.current.amt.map((a) => Math.max(0, a) * zone)
+    // Once dropped, the effect stays on the lower "7" and "8" (the "8" clears with the lateral slide)
+    const fixedZone = drop.current.on && p >= PAN[1] - 0.01 ? 1 : 0
+    const clearOthers = 1 - easeInOutCubic(clamp01((panRef.current?.get() ?? 0) / 0.3))
+    const amts = echo.current.amt.map((a, g) => {
+      const zone = Math.max(atEight, atFinal, CA_GLYPHS.includes(g) ? fixedZone : 0)
+      return Math.max(0, a) * zone * (STAYING_GLYPHS.includes(g) ? 1 : clearOthers)
+    })
     const echoAmt = Math.max(...amts)
     const off = echoCanvas.current
     if (fx.current && off) {
@@ -644,7 +718,7 @@ export default function LogoMorph({ progress, eyesRef, captions }: LogoMorphProp
         Math.min(1.25, echoAmt),
         echo.current.phase,
         performance.now() / 1000,
-        echo.current.kick * zone,
+        echo.current.kick * Math.max(atEight, atFinal, fixedZone),
         ECHO_MELT,
       )
     }
@@ -689,14 +763,18 @@ export default function LogoMorph({ progress, eyesRef, captions }: LogoMorphProp
       const s = logoH / LOGO_H
       const ox = W / 2 - (LOGO_W * s) / 2
       const oy = H / 2 - logoH / 2
-      ctx.globalAlpha = 1
-      ctx.beginPath()
-      for (const poly of LOGO_POLYS) {
+      // During the lateral slide the lower "7" and "8" stay; the top row clears before entering the view
+      const clear = 1 - easeInOutCubic(clamp01((panRef.current?.get() ?? 0) / 0.3))
+      LOGO_POLYS.forEach((poly, g) => {
+        ctx.globalAlpha = STAYING_GLYPHS.includes(g) ? 1 : clear
+        if (ctx.globalAlpha <= 0.002) return
+        ctx.beginPath()
         ctx.moveTo(ox + poly[0] * s, oy + poly[1] * s)
         for (let i = 2; i < poly.length; i += 2) ctx.lineTo(ox + poly[i] * s, oy + poly[i + 1] * s)
         ctx.closePath()
-      }
-      ctx.fill()
+        ctx.fill()
+      })
+      ctx.globalAlpha = 1
 
       // Echo melt: carve the hovered glyph's edge away in soft steps so the pixel layer shows through
       LOGO_POLYS.forEach((poly, g) => {
@@ -721,6 +799,54 @@ export default function LogoMorph({ progress, eyesRef, captions }: LogoMorphProp
       fillPieces(p, 1, true)
     }
     ctx.globalAlpha = 1
+
+    // Client logos passing inside a grid row (lateral scene)
+    const slid = panRef.current?.get() ?? 0
+    if (slid > 0.001 && logoSprites.current.length === CLIENT_LOGOS.length) {
+      const { s, ox, oy } = layout()
+      const rowH = CELL_H * s
+      const top = oy + (GLYPH_Y[LOGO_ROW.glyphRow] + CELL_H * LOGO_ROW.row) * s
+      const cy = top + rowH / 2
+      const h = rowH * LOGO_HEIGHT
+      const gap = rowH * LOGO_GAP
+      const sizes = logoSprites.current.map(({ aspect }) => h * aspect)
+      const track = sizes.reduce((a, w) => a + w + gap, 0)
+      const shift = ((performance.now() / 1000) * LOGO_SPEED * rowH) % track
+      const span = (Math.hypot(W, H) / cam.zoom) * 1.2
+      const m = ctx.getTransform()
+      const fadeIn = easeInOutCubic(clamp01((slid - 0.35) / 0.5))
+
+      let x = cam.fx - span - ((cam.fx - span + shift) % track + track) % track
+      for (let i = 0; x < cam.fx + span; i = (i + 1) % sizes.length) {
+        const w = sizes[i]
+        // Fade by screen position: in after the "7", out at the right edge
+        const sx = m.transformPoint(new DOMPoint(x + w / 2, cy)).x / canvas.width
+        // Enter straight from the right edge; fade out as they reach the "8" on the left
+        const edge = clamp01((sx - LATERAL_PEEK - 0.04) / 0.1) * clamp01((1 - sx) / 0.02)
+        const a = 0.55 * edge * fadeIn
+        if (a > 0.01) {
+          ctx.globalAlpha = a
+          ctx.drawImage(logoSprites.current[i].img, x, cy - h / 2, w, h)
+        }
+        x += w + gap
+      }
+
+      // Row label, pinned to the row's top line just after the "7"
+      const label = labelRef.current
+      if (label) {
+        ctx.globalAlpha = 0.35 * fadeIn
+        ctx.fillStyle = '#fff'
+        ctx.font = `700 ${rowH * 0.07}px ${CAPTION_FONT}`
+        ctx.textBaseline = 'top'
+        ctx.textAlign = 'center'
+        ctx.fillText(
+          label.toUpperCase().split('').join(String.fromCharCode(8202)),
+          lateralFrame(W, H, s, ox, oy).fx, top + rowH * 0.08,
+        )
+        ctx.textAlign = 'start'
+      }
+      ctx.globalAlpha = 1
+    }
 
     // Captions: word-by-word masked slide in, slide out upwards, riding the camera
     {
@@ -760,6 +886,25 @@ export default function LogoMorph({ progress, eyesRef, captions }: LogoMorphProp
       })
     }
 
+    // Drag & drop beat (screen space)
+    const dropStart = drop.current.start
+    if (dropStart !== null) {
+      const t = (performance.now() - dropStart) / 1000
+      if (t <= DROP_TOTAL) {
+        const { s, ox, oy } = layout()
+        const m = ctx.getTransform()
+        const hit = m.transformPoint(new DOMPoint(ox + DROP_TARGET.x * s, oy + DROP_TARGET.y * s))
+        ctx.save()
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+        ctx.globalAlpha = 1
+        drawDropScene(
+          ctx, t, { x: hit.x / dpr, y: hit.y / dpr }, cam.rot, { w: W, h: H },
+          effectLabelRef.current, `600 15px ${CAPTION_FONT}`, dpr,
+        )
+        ctx.restore()
+      }
+    }
+
     // Glow, flaring briefly each time a formation locks in
     const flare = FLASHES.reduce((m, [at, amt]) => Math.max(m, amt * Math.exp(-(((p - at) / 0.022) ** 2))), 0)
     wrap.style.filter =
@@ -768,6 +913,9 @@ export default function LogoMorph({ progress, eyesRef, captions }: LogoMorphProp
   }, [progress, captureEyes, cameraAt, layout, piecesAt, gridAt, reduceMotion])
 
   useMotionValueEvent(progress, 'change', draw)
+
+
+  useEffect(() => pan?.on('change', () => draw()), [pan, draw])
 
 
 
@@ -803,17 +951,31 @@ export default function LogoMorph({ progress, eyesRef, captions }: LogoMorphProp
       const ptr = pointer.current
       const hovered = echoZone && ptr ? hitRef.current(ptr.x, ptr.y) : -1
       const e = echo.current
+
+      // Drag & drop beat: starts on reaching the "8"; resets if the user scrolls back before it
+      const d = drop.current
+      if (p < PAN[0]) { d.start = null; d.on = false }
+      else if (d.start === null && p >= DROP_AT) {
+        d.start = now
+        if (reduceMotionRef.current) { d.start = now - DROP_TOTAL * 1000; d.on = true }
+      }
+      if (d.start !== null && !d.on && now - d.start >= DROP_IMPACT * 1000) {
+        d.on = true
+        e.kickVel += 14 // the landing thump
+      }
+      const dropRunning = d.start !== null && now - d.start <= DROP_TOTAL * 1000
+
       const echoAlive = e.amt.some((a, g) => Math.abs(a) > 0.001 || Math.abs(e.vel[g]) > 0.01)
-      if (hovered >= 0 || echoAlive || Math.abs(e.kick) > 0.001) {
+      if (hovered >= 0 || d.on || echoAlive || Math.abs(e.kick) > 0.001 || dropRunning) {
         // Trail growth springs
         e.amt.forEach((a, g) => {
-          const target = g === hovered ? 1 : 0
+          const target = g === hovered || (d.on && CA_GLYPHS.includes(g)) ? 1 : 0
           e.vel[g] += (ECHO_GROW_SPRING.k * (target - a) - ECHO_GROW_SPRING.c * e.vel[g]) * dt
           e.amt[g] = a + e.vel[g] * dt
           if (!target && Math.abs(e.amt[g]) < 0.001 && Math.abs(e.vel[g]) < 0.01) { e.amt[g] = 0; e.vel[g] = 0 }
         })
         // Heartbeat: two thumps per beat, each kicking the jiggle spring
-        if (hovered >= 0) {
+        if (hovered >= 0 || d.on) {
           const before = e.beat
           e.beat = (e.beat + dt) % ECHO_BEAT_PERIOD
           const wrapped = e.beat < before
@@ -821,7 +983,7 @@ export default function LogoMorph({ progress, eyesRef, captions }: LogoMorphProp
           if (wrapped) e.kickVel += 9
           if (crossedGap) e.kickVel -= 6
         }
-        e.phase = hovered >= 0 || echoAlive ? e.beat / ECHO_BEAT_TRAVEL : -1
+        e.phase = hovered >= 0 || d.on || echoAlive ? e.beat / ECHO_BEAT_TRAVEL : -1
         e.kickVel += (-ECHO_KICK_SPRING.k * e.kick - ECHO_KICK_SPRING.c * e.kickVel) * dt
         e.kick += e.kickVel * dt
         drawRef.current()
@@ -844,6 +1006,9 @@ export default function LogoMorph({ progress, eyesRef, captions }: LogoMorphProp
         presses.current.set(under, press)
       }
       presses.current.forEach((pr, i) => { if (i !== under) pr.target = 0 })
+
+      // Logos marquee runs on time while the lateral scene is visible
+      if ((panRef.current?.get() ?? 0) > 0.001) drawRef.current()
 
       // Push springs (underdamped → a little wobble on release)
       if (presses.current.size) {
@@ -884,6 +1049,33 @@ export default function LogoMorph({ progress, eyesRef, captions }: LogoMorphProp
     ro.observe(canvas)
     return () => ro.disconnect()
   }, [draw])
+
+  // White silhouettes of the client logos (drawn on the canvas, inside the grid)
+  useEffect(() => {
+    let cancelled = false
+    Promise.all(
+      CLIENT_LOGOS.map(
+        ({ src }) =>
+          new Promise<{ img: HTMLCanvasElement; aspect: number }>((resolve, reject) => {
+            const image = new Image()
+            image.onload = () => {
+              const c = document.createElement('canvas')
+              c.width = image.naturalWidth
+              c.height = image.naturalHeight
+              const g = c.getContext('2d')!
+              g.drawImage(image, 0, 0)
+              g.globalCompositeOperation = 'source-in'
+              g.fillStyle = '#fff'
+              g.fillRect(0, 0, c.width, c.height)
+              resolve({ img: c, aspect: image.naturalWidth / image.naturalHeight })
+            }
+            image.onerror = reject
+            image.src = src
+          }),
+      ),
+    ).then((sprites) => { if (!cancelled) logoSprites.current = sprites }).catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   // three.js echo lives in its own chunk, fetched after first paint
   useEffect(() => {

@@ -5,10 +5,20 @@ import { useLang } from '@/contexts/LangContext'
 import { scrollTo, holdScroll } from '@/hooks/useLenis'
 import { LangSwitch } from '@/components/ui'
 import HeroFace from './HeroFace'
-import LogoMorph from './LogoMorph'
+import LogoMorph, { PAN_FRAC, DROP_AT, DROP_HOLD_MS } from './LogoMorph'
+import LateralScene from './LateralScene'
 
-const MORPH_END = 0.88     // share of the pinned scroll used by the morph; the rest is the dwell
-const FINAL_HOLD_MS = 1000 // how long the closing frame holds the scroll
+// Pinned scroll budget (vh): morph → dwell on the closing frame → lateral scene
+const MORPH_VH = 370
+const DWELL_VH = 50
+const LATERAL_VH = 380
+const PIN_VH = MORPH_VH + DWELL_VH + LATERAL_VH
+const MORPH_END = MORPH_VH / PIN_VH                // progress where the closing frame lands
+const LATERAL_START = (MORPH_VH + DWELL_VH) / PIN_VH
+const PAN_SHARE = 0.22                             // share of the lateral stretch spent sliding
+const FINAL_HOLD_MS = 1000                         // how long the closing frame holds the scroll
+
+const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2)
 
 export default function Hero() {
   const { t } = useLang()
@@ -23,12 +33,26 @@ export default function Hero() {
   // The morph plays over the first part of the pin; the rest is a dwell on the closing frame
   const morphSource = useTransform(scrollYProgress, [0, MORPH_END], [0, 1], { clamp: true })
   const morph = useSpring(morphSource, { stiffness: 90, damping: 24, mass: 0.6, restDelta: 0.00005 })
+  // Lateral stretch: the camera slides right into the next scene
+  const lateralSource = useTransform(scrollYProgress, [LATERAL_START, 1], [0, 1], { clamp: true })
+  const lateral = useSpring(lateralSource, { stiffness: 90, damping: 24, mass: 0.6, restDelta: 0.00005 })
+  const pan = useTransform(lateral, (v) => easeInOutCubic(Math.min(1, Math.max(0, v / PAN_SHARE))))
+  const finalShift = useTransform(pan, (v) => `${-v * PAN_FRAC * 100}%`)
 
   // Magnet on the closing frame: arriving there (scrolling down) parks the page for a moment
   const heldRef = useRef(false)
+  const dropHeldRef = useRef(false)
   useMotionValueEvent(scrollYProgress, 'change', (v) => {
     const section = sectionRef.current
     if (!section) return
+    // Same magnet on the "8" while the pixel hand drops the effect in
+    const dropAt = DROP_AT * MORPH_END
+    if (v < dropAt - 0.03) dropHeldRef.current = false
+    if (!dropHeldRef.current && v >= dropAt && scrollYProgress.getPrevious()! < dropAt) {
+      dropHeldRef.current = true
+      holdScroll(section.offsetTop + dropAt * (section.offsetHeight - window.innerHeight), DROP_HOLD_MS)
+      return
+    }
     if (v < MORPH_END - 0.03) heldRef.current = false
     if (!heldRef.current && v >= MORPH_END && scrollYProgress.getPrevious()! < MORPH_END) {
       heldRef.current = true
@@ -65,7 +89,14 @@ export default function Hero() {
   ]
 
   return (
-    <section id="hero" ref={sectionRef} className="relative h-[520vh]">
+    <section id="hero" ref={sectionRef} className="relative" style={{ height: `${PIN_VH + 100}vh` }}>
+      {/* Nav target for "Servicios": the lateral scene, once it has slid in */}
+      <div
+        id="servicios"
+        aria-hidden
+        className="absolute left-0 w-px h-px"
+        style={{ top: `${MORPH_VH + DWELL_VH + LATERAL_VH * PAN_SHARE}vh` }}
+      />
       <div className="sticky top-0 h-screen p-4 md:p-6">
 
 
@@ -240,11 +271,12 @@ export default function Hero() {
           <HeroFace phrases={t.hero.phrases} morph={morph} eyesRef={eyesRef} />
         </div>
 
-        <LogoMorph progress={morph} eyesRef={eyesRef} captions={t.hero.captions} />
+        <LogoMorph progress={morph} eyesRef={eyesRef} captions={t.hero.captions} pan={pan} clientsLabel={t.clientes.label} effectLabel={t.hero.effectLabel} />
 
-        {/* ── Closing hero frame ────────────────────────────────── */}
+        {/* ── Closing hero frame (slides out left with the camera) ─ */}
+        <motion.div className="absolute inset-0 z-10 pointer-events-none" style={{ x: finalShift }}>
         <motion.div
-          className="absolute left-5 md:left-[5%] top-1/2 -translate-y-1/2 z-10 max-w-[90%]"
+          className="absolute left-5 md:left-[5%] top-1/2 -translate-y-1/2 max-w-[90%]"
           style={{ pointerEvents: finEvents }}
         >
           <h2 className="text-white leading-[1.08] tracking-[-0.01em] text-[clamp(1.9rem,3.6vw,3.6rem)]">
@@ -270,6 +302,10 @@ export default function Hero() {
             <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
           </motion.a>
         </motion.div>
+        </motion.div>
+
+        {/* ── Lateral scene ─────────────────────────────────────── */}
+        <LateralScene pan={pan} />
 
         {/* ── CTAs ──────────────────────────────────────────────── */}
         <motion.div
