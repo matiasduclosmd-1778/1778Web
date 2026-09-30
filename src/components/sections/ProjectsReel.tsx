@@ -2,6 +2,7 @@ import { MotionValue, useMotionValueEvent, useReducedMotion } from 'framer-motio
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { PROJECTS } from '@/data/projects'
 import type { Reel } from './projectsGl'
+import ReelDots from './ReelDots'
 
 // Works reel: project images slide sideways with the scroll; the ones leaving the centre fold
 // back like sheets of paper, and the pointer drags a liquid, heat-coloured trail across the whole
@@ -311,22 +312,7 @@ export default function ProjectsReel({ pos, visible, preload, onSelect }: Projec
           transitionDelay: visible ? '1.3s' : '0s',
         }}
       >
-        {PROJECTS.map((p, i) => (
-          <button
-            key={p.name}
-            type="button"
-            aria-label={p.name}
-            aria-current={i === active ? 'true' : undefined}
-            onClick={() => go(i)}
-            // The dot is 12px; the button around it is a finger-sized 36 × 44 target
-            className="w-9 h-11 -mx-1.5 flex items-center justify-center"
-          >
-            <span
-              className="block w-3 h-3 md:w-3.5 md:h-3.5 rounded-full transition-colors duration-300"
-              style={{ background: i === active ? '#ffffff' : 'rgba(255,255,255,0.35)' }}
-            />
-          </button>
-        ))}
+        <ReelDots count={PROJECTS.length} pos={pos} active={active} labels={PROJECTS.map((p) => p.name)} onSelect={go} />
       </div>
     </div>
   )
