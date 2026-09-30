@@ -18,8 +18,10 @@ html.lenis, html.lenis body { height: auto; }
 
 .lenis.lenis-smooth { scroll-behavior: auto !important; }
 .lenis.lenis-stopped { overflow: hidden; }
-/* iOS Safari ignores overflow on <html> for touch scrolling: hold the body too while a hold runs */
-.lenis.lenis-stopped body { overflow: hidden; touch-action: none; }
+/* iOS Safari ignores overflow on <html> for touch scrolling, so a hold also blocks panning on the
+   body. Only touch-action: overflow on <body> would make it a scroll container and break the
+   hero's sticky card (it jumped away and the screen went black during the hold) */
+.lenis.lenis-stopped body { touch-action: none; }
 
 html {
   /* Off-screen scenes (the lateral slide) must never widen the page on phones; clip keeps sticky working */
