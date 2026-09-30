@@ -41,11 +41,13 @@ interface ProjectsReelProps {
   pos: MotionValue<number>
   /** The reel is on screen (the camera has come down onto Works) */
   visible: boolean
+  /** Works is coming up: fetch three.js and the project images (nothing loads before this) */
+  preload: boolean
   /** Jump to a project (the page scrolls there) */
   onSelect: (index: number) => void
 }
 
-export default function ProjectsReel({ pos, visible, onSelect }: ProjectsReelProps) {
+export default function ProjectsReel({ pos, visible, preload, onSelect }: ProjectsReelProps) {
   const reduceMotion = !!useReducedMotion()
   const rootRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -73,8 +75,9 @@ export default function ProjectsReel({ pos, visible, onSelect }: ProjectsReelPro
     }
   })
 
-  // three.js lives in its own chunk
+  // three.js and the images are fetched only once Works is coming up
   useEffect(() => {
+    if (!preload) return
     let cancelled = false
     let gui: { destroy: () => void } | null = null
     import('./projectsGl').then(({ createReel, REEL_PARAMS }) => {
@@ -115,7 +118,7 @@ export default function ProjectsReel({ pos, visible, onSelect }: ProjectsReelPro
       reel.current?.dispose()
       reel.current = null
     }
-  }, [])
+  }, [preload])
 
   // Keep the canvas matched to the card
   useLayoutEffect(() => {

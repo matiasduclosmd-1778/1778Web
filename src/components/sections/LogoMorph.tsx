@@ -99,6 +99,8 @@ const ECHO_DIR_EIGHT = { x: 0.88, y: 0.47 }   // screen-space trail direction on
 const ECHO_DIR_FINAL = { x: -0.34, y: 0.94 }  // …and on the closing "7" (down, away from the edge)
 const ECHO_LENGTH = 0.34                      // trail length, fraction of the card's larger side
 const ECHO_MELT = 16                          // CSS px of glyph edge that dissolves into pixels
+const ECHO_LOAD_AT = 0.3                      // morph progress that fetches the three.js echo…
+const ECHO_IDLE_LOAD_MS = 5000                // …or this long after mount, whichever comes first
 
 // Drag & drop beat on the "8": a pixel hand drops an "aberración cromática" pill on it,
 // which switches the echo on for good on the lower "7" and the "8"
@@ -1129,24 +1131,35 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
     return () => { cancelled = true }
   }, [])
 
-  // three.js echo lives in its own chunk, fetched after first paint
+  // three.js echo lives in its own chunk. It is only needed from the "8" on, so it is fetched once
+  // the morph is under way (or after the page has been idle a while), never during the first load
   useEffect(() => {
     let cancelled = false
-    import('./echoFx').then(({ createEchoFx }) => {
-      const canvas = fxCanvasRef.current
-      const mask = echoCanvas.current ?? (echoCanvas.current = document.createElement('canvas'))
-      if (cancelled || !canvas) return
-      const effect = createEchoFx(canvas, mask)
-      const { w, h, dpr } = size.current
-      if (w) effect.resize(w, h, dpr)
-      fx.current = effect
-    })
+    let started = false
+    const load = () => {
+      if (started) return
+      started = true
+      import('./echoFx').then(({ createEchoFx }) => {
+        const canvas = fxCanvasRef.current
+        const mask = echoCanvas.current ?? (echoCanvas.current = document.createElement('canvas'))
+        if (cancelled || !canvas) return
+        const effect = createEchoFx(canvas, mask)
+        const { w, h, dpr } = size.current
+        if (w) effect.resize(w, h, dpr)
+        fx.current = effect
+      })
+    }
+    const idle = window.setTimeout(load, ECHO_IDLE_LOAD_MS)
+    const unsub = progress.on('change', (v) => { if (v > ECHO_LOAD_AT) load() })
+    if (progress.get() > ECHO_LOAD_AT) load()
     return () => {
       cancelled = true
+      window.clearTimeout(idle)
+      unsub()
       fx.current?.dispose()
       fx.current = null
     }
-  }, [])
+  }, [progress])
 
   return (
     <div ref={wrapRef} aria-hidden className="absolute inset-0 pointer-events-none" style={{ opacity: 0 }}>

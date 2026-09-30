@@ -59,6 +59,9 @@ export default function Hero() {
   const reelPos = useSpring(reelSource, { stiffness: 60, damping: 20, mass: 0.8, restDelta: 0.0005 })
   const [reelVisible, setReelVisible] = useState(false)
   useMotionValueEvent(down, 'change', (v) => setReelVisible(v > 0.6))
+  // The reel's three.js chunk and project images load once the camera heads for the logos screen
+  const [reelPreload, setReelPreload] = useState(false)
+  useMotionValueEvent(lateral, 'change', (v) => { if (v > 0.02) setReelPreload(true) })
   const projectY = (i: number) => {
     const section = sectionRef.current
     if (!section) return null
@@ -177,7 +180,7 @@ export default function Hero() {
 
         {/* ── Works (same card: the camera moves down onto it) ── */}
         <motion.div className="absolute inset-0 z-10 pointer-events-none" style={{ y: worksY }}>
-          <ProjectsReel pos={reelPos} visible={reelVisible} onSelect={selectProject} />
+          <ProjectsReel pos={reelPos} visible={reelVisible} preload={reelPreload} onSelect={selectProject} />
           <motion.h2
             className="absolute left-5 md:left-[5%] top-[16%] md:top-[18%] leading-none tracking-[-0.02em] text-[clamp(3rem,9vw,9rem)]"
             style={{ color: '#ffffff', fontFamily: '"Geist", sans-serif', fontWeight: 700 }}
