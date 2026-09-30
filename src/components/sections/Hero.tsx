@@ -191,7 +191,7 @@ export default function Hero() {
           <ProjectsReel pos={reelPos} visible={reelVisible} preload={reelPreload} onSelect={selectProject} />
           <div className="absolute left-5 md:left-[5%] top-[16%] md:top-[18%]">
             <h2
-              className="leading-none tracking-[-0.02em] text-[clamp(3rem,9vw,9rem)] uppercase"
+              className="leading-none tracking-[-0.02em] text-[clamp(3rem,min(9vw,14vh),9rem)] uppercase"
               style={{ color: '#ffffff', fontFamily: '"Geist", sans-serif', fontWeight: 700 }}
             >
               <LiquidText show={worksShow}>Works</LiquidText>

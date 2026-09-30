@@ -1,4 +1,4 @@
-import { MotionValue, useMotionValueEvent, useReducedMotion } from 'framer-motion'
+import { AnimatePresence, motion, MotionValue, useMotionValueEvent, useReducedMotion } from 'framer-motion'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { PROJECTS } from '@/data/projects'
 import type { Reel } from './projectsGl'
@@ -22,6 +22,8 @@ const REVEAL_DELAY = 0.15
 const REVEAL_STAGGER = 0.22
 const TITLE_REVEAL_AT = 0.9
 const TITLE_REVEAL_S = 0.6
+
+const CHIP_H = 24          // tag chip height, px
 
 const easeOutCubic = (t: number) => 1 - (1 - t) ** 3
 const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2)
@@ -249,6 +251,8 @@ export default function ProjectsReel({ pos, visible, preload, onSelect }: Projec
   const project = PROJECTS[active]
   const nameSize = nameSizeFor(box.W, box.H || 1)
   const go = (i: number) => onSelect(Math.max(0, Math.min(PROJECTS.length - 1, i)))
+  // Under the name: the tag chips, then the dots
+  const chipsTop = l.top + l.h + nameSize * 0.42 + 6
 
   const trackPointer = (e: React.PointerEvent) => {
     const r = rootRef.current?.getBoundingClientRect()
@@ -302,11 +306,33 @@ export default function ProjectsReel({ pos, visible, preload, onSelect }: Projec
       {/* The name is drawn on the canvas (so the liquid trail can smear it); this is for assistive tech */}
       <h3 className="sr-only uppercase" aria-live="polite">{project.name}</h3>
 
+      {/* Tags of the project in front: chips between the name and the dots */}
+      <div
+        className="absolute left-0 right-0 flex justify-center transition-opacity duration-700 ease-out pointer-events-none"
+        style={{ top: chipsTop, height: CHIP_H, opacity: visible ? 1 : 0, transitionDelay: visible ? '1.15s' : '0s' }}
+      >
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.ul key={active} className="flex gap-1.5" aria-label="Tags">
+            {project.tags.map((tag, i) => (
+              <motion.li
+                key={tag}
+                className="flex items-center h-6 px-2.5 rounded-full border border-white/25 text-[10px] md:text-[11px] uppercase tracking-[0.1em] text-white/85 leading-none"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.35, delay: 0.08 + i * 0.06, ease: [0.16, 1, 0.3, 1] } }}
+                exit={{ opacity: 0, y: -6, transition: { duration: 0.15 } }}
+              >
+                {tag}
+              </motion.li>
+            ))}
+          </motion.ul>
+        </AnimatePresence>
+      </div>
+
       {/* Dots */}
       <div
         className="absolute left-0 right-0 flex justify-center transition-[opacity,transform] duration-700 ease-out"
         style={{
-          top: l.top + l.h + nameSize * 0.45 + 18 - 16,
+          top: chipsTop + CHIP_H + 2,
           opacity: visible ? 1 : 0,
           transform: visible ? 'none' : 'translateY(8px)',
           transitionDelay: visible ? '1.3s' : '0s',

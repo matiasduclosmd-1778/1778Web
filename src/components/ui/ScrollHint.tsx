@@ -8,6 +8,8 @@ import { isScrollLocked } from '@/hooks/useLenis'
 const START_AT = 40
 // Within this of the bottom there is nothing left to scroll to
 const END_GAP = 40
+// Below this viewport height (a phone held sideways) the cue is left out
+const MIN_VIEW_H = 500
 
 /**
  * "Continuá scrolleando": a small floating cue, shown whenever there is more page below and the
@@ -23,7 +25,8 @@ export default function ScrollHint() {
     const check = () => {
       const y = window.scrollY
       const end = document.documentElement.scrollHeight - window.innerHeight - END_GAP
-      const next = y > START_AT && y < end && !isScrollLocked()
+      // A phone held sideways has no room left for it (it would sit on the Works dots)
+      const next = y > START_AT && y < end && !isScrollLocked() && window.innerHeight >= MIN_VIEW_H
       if (next !== last) { last = next; setShow(next) }
     }
     check()
