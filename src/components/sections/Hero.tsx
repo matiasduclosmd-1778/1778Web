@@ -32,7 +32,7 @@ const GLIDE_S = 3                                  // after the drop, the camera
 
 const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2)
 // One camera for every scroll-driven beat: critically damped, so it lands softly and never bounces
-const CAMERA_SPRING = { stiffness: 80, damping: 22, mass: 0.7, restDelta: 0.00005 }
+const CAMERA_SPRING = { stiffness: 105, damping: 25, mass: 0.7, restDelta: 0.00005 }
 
 export default function Hero() {
   const { t } = useLang()

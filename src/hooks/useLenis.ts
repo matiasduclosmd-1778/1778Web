@@ -73,7 +73,7 @@ export function useLenis() {
     const lenis = new Lenis({
       // Frame-rate independent inertia: soft, weighty wheel scrolling on desktop.
       // Touch keeps the native (iOS / Android) momentum — the scenes smooth it on their own.
-      lerp: 0.085,
+      lerp: 0.1,
       wheelMultiplier: 1,
       smoothWheel: true,
       syncTouch: false,
