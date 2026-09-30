@@ -120,16 +120,45 @@ const screenFragment = /* glsl */ `
   }
 `
 
-export function createEchoFx(canvas: HTMLCanvasElement, mask: HTMLCanvasElement) {
+/**
+ * @param glyphs outlines of the glyphs that can echo, as flat [x0, y0, x1, y1…] in logo units
+ */
+export function createEchoFx(canvas: HTMLCanvasElement, glyphs: number[][]) {
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, premultipliedAlpha: true, antialias: false })
   renderer.setClearColor(0x000000, 0)
   renderer.outputColorSpace = THREE.LinearSRGBColorSpace
 
-  const texture = new THREE.CanvasTexture(mask)
-  texture.minFilter = THREE.LinearFilter
-  texture.magFilter = THREE.LinearFilter
-  texture.generateMipmaps = false
-  texture.colorSpace = THREE.NoColorSpace
+  // ── Mask (R = outline, G = body), drawn on the GPU at 1/4 of the card ──
+  // It used to be a 2D canvas re-uploaded to a texture every frame, which alone took several ms per
+  // frame in Safari. The glyphs are geometry here, placed by the scene's camera each frame.
+  const maskRT = new THREE.WebGLRenderTarget(1, 1, {
+    minFilter: THREE.LinearFilter,
+    magFilter: THREE.LinearFilter,
+    depthBuffer: false,
+    generateMipmaps: false,
+  })
+  const texture = maskRT.texture
+  const maskScene = new THREE.Scene()
+  const maskGroup = new THREE.Group()
+  maskGroup.matrixAutoUpdate = false
+  maskScene.add(maskGroup)
+  const maskParts = glyphs.map((poly) => {
+    const shape = new THREE.Shape()
+    shape.moveTo(poly[0], poly[1])
+    for (let i = 2; i < poly.length; i += 2) shape.lineTo(poly[i], poly[i + 1])
+    const body = new THREE.Mesh(
+      new THREE.ShapeGeometry(shape),
+      new THREE.MeshBasicMaterial({ color: 0x000000, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false, side: THREE.DoubleSide }),
+    )
+    const pts: number[] = []
+    for (let i = 0; i < poly.length; i += 2) pts.push(poly[i], poly[i + 1], 0)
+    const line = new THREE.LineLoop(
+      new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(pts, 3)),
+      new THREE.LineBasicMaterial({ color: 0x000000, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false }),
+    )
+    maskGroup.add(body, line)
+    return { body, line }
+  })
 
   const material = new THREE.ShaderMaterial({
     vertexShader,
@@ -178,16 +207,14 @@ export function createEchoFx(canvas: HTMLCanvasElement, mask: HTMLCanvasElement)
   })
   const screenScene = new THREE.Scene()
   screenScene.add(new THREE.Mesh(quad.geometry, screenMaterial))
-  // Compile both programs now, not on the first frame of the drop (that froze the scroll)
+  // Compile every program now, not on the first frame of the drop (that froze the scroll)
   renderer.compile(scene, camera)
   renderer.compile(screenScene, camera)
+  renderer.compile(maskScene, camera)
 
   let width = 1
   let height = 1
   let cleared = true
-  // WebGL2 textures have immutable storage: if the mask is resized, reallocate
-  let texW = mask.width
-  let texH = mask.height
   const PIXEL_CSS = 5 // block size in CSS px
 
   const resize = (w: number, h: number, dpr: number) => {
@@ -206,6 +233,7 @@ export function createEchoFx(canvas: HTMLCanvasElement, mask: HTMLCanvasElement)
     const rows = Math.ceil(res.y / px)
     blocks.setSize(cols, rows)
     screenMaterial.uniforms.uGrid.value.set(cols, rows)
+    maskRT.setSize(Math.max(1, Math.ceil(width / 4)), Math.max(1, Math.ceil(height / 4)))
   }
 
   return {
@@ -217,8 +245,13 @@ export function createEchoFx(canvas: HTMLCanvasElement, mask: HTMLCanvasElement)
      * @param phase  0..1 heartbeat front position along the trail
      * @param kick   heartbeat spring displacement (blocks jiggle with it)
      * @param meltPx radius (CSS px) over which the glyph edge dissolves into pixels
+     * @param mask   placement of the glyphs (affine logo units → clip space: a b c d e f, as in
+     *               x' = a·x + c·y + e, y' = b·x + d·y + f) and how strong each one is (0..1)
      */
-    render(dir: { x: number; y: number }, amt: number, phase: number, time: number, kick = 0, meltPx = 0) {
+    render(
+      dir: { x: number; y: number }, amt: number, phase: number, time: number, kick: number, meltPx: number,
+      mask: { m: [number, number, number, number, number, number]; amounts: number[] },
+    ) {
       if (amt <= 0.001) {
         if (!cleared) {
           renderer.clear()
@@ -231,12 +264,19 @@ export function createEchoFx(canvas: HTMLCanvasElement, mask: HTMLCanvasElement)
       if (canvas.clientWidth !== width || canvas.clientHeight !== height) {
         resize(canvas.clientWidth, canvas.clientHeight, window.devicePixelRatio || 1)
       }
-      if (mask.width !== texW || mask.height !== texH) {
-        texture.dispose()
-        texW = mask.width
-        texH = mask.height
-      }
-      texture.needsUpdate = true
+      // Mask pass
+      const [a, b, c, d, e, f] = mask.m
+      maskGroup.matrix.set(a, c, 0, e, b, d, 0, f, 0, 0, 1, 0, 0, 0, 0, 1)
+      maskGroup.matrixWorldNeedsUpdate = true
+      maskParts.forEach(({ body, line }, g) => {
+        const k = mask.amounts[g] ?? 0
+        body.visible = line.visible = k > 0.002
+        ;(body.material as THREE.MeshBasicMaterial).color.setRGB(0, k, 0, THREE.LinearSRGBColorSpace)
+        ;(line.material as THREE.LineBasicMaterial).color.setRGB(k, 0, 0, THREE.LinearSRGBColorSpace)
+      })
+      renderer.setRenderTarget(maskRT)
+      renderer.clear()
+      renderer.render(maskScene, camera)
       material.uniforms.uDir.value.set(dir.x / width, -dir.y / height)
       material.uniforms.uAmt.value = amt
       material.uniforms.uPhase.value = phase
@@ -250,7 +290,11 @@ export function createEchoFx(canvas: HTMLCanvasElement, mask: HTMLCanvasElement)
     },
 
     dispose() {
-      texture.dispose()
+      maskRT.dispose()
+      maskParts.forEach(({ body, line }) => {
+        body.geometry.dispose(); (body.material as THREE.Material).dispose()
+        line.geometry.dispose(); (line.material as THREE.Material).dispose()
+      })
       material.dispose()
       screenMaterial.dispose()
       blocks.dispose()

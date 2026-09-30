@@ -1,4 +1,4 @@
-import { MotionValue, useMotionValueEvent, useReducedMotion } from 'framer-motion'
+import { frame, MotionValue, useMotionValueEvent, useReducedMotion } from 'framer-motion'
 import { RefObject, useCallback, useEffect, useRef } from 'react'
 import type { EchoFx } from './echoFx'
 import { CLIENT_LOGOS } from '@/data/clients'
@@ -323,7 +323,6 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
   const eyeBase = useRef({ w: 0, h: 0 })
   const morphing = useRef(false)
   // Hover echo state (animated in its own rAF loop)
-  const echoCanvas = useRef<HTMLCanvasElement | null>(null) // mask: R = outline, G = body
   const fxCanvasRef = useRef<HTMLCanvasElement>(null)
   const fx = useRef<EchoFx | null>(null)
   const echo = useRef({
@@ -745,32 +744,16 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
       return Math.max(0, a) * zone * (STAYING_GLYPHS.includes(g) ? 1 : clearOthers)
     })
     const echoAmt = Math.max(...amts)
-    const off = echoCanvas.current
-    if (fx.current && off) {
-      if (echoAmt > 0.002) {
-        // Mask at half resolution, same camera as the scene
-        const octx = off.getContext('2d')!
-        octx.setTransform(1, 0, 0, 1, 0, 0)
-        octx.clearRect(0, 0, off.width, off.height)
-        octx.setTransform(new DOMMatrix().scale(off.width / canvas.width).multiply(ctx.getTransform()))
-        const { s, ox, oy } = layout()
-        octx.globalCompositeOperation = 'lighter'
-        octx.lineJoin = 'miter'
-        octx.lineWidth = 1.6 / ((off.width / W) * cam.zoom)
-        LOGO_POLYS.forEach((poly, g) => {
-          const e = Math.sqrt(Math.min(1, amts[g]))
-          if (e <= 0.002) return
-          octx.beginPath()
-          octx.moveTo(ox + poly[0] * s, oy + poly[1] * s)
-          for (let v = 2; v < poly.length; v += 2) octx.lineTo(ox + poly[v] * s, oy + poly[v + 1] * s)
-          octx.closePath()
-          octx.fillStyle = `rgb(0,${Math.round(255 * e)},0)`
-          octx.fill()
-          octx.strokeStyle = `rgb(${Math.round(255 * e)},0,0)`
-          octx.stroke()
-        })
-        octx.globalCompositeOperation = 'source-over'
-      }
+    if (fx.current) {
+      // Glyph placement for the echo mask: logo units → this frame's camera → clip space
+      const { s, ox, oy } = layout()
+      const M = ctx.getTransform()
+      const kx = 2 / canvas.width
+      const ky = -2 / canvas.height
+      const maskM: [number, number, number, number, number, number] = [
+        kx * M.a * s, ky * M.b * s, kx * M.c * s, ky * M.d * s,
+        kx * (M.a * ox + M.c * oy + M.e) - 1, ky * (M.b * ox + M.d * oy + M.f) + 1,
+      ]
       const len = ECHO_LENGTH * Math.max(W, H)
       const dx = lerp(ECHO_DIR_EIGHT.x, ECHO_DIR_FINAL.x, atFinal)
       const dy = lerp(ECHO_DIR_EIGHT.y, ECHO_DIR_FINAL.y, atFinal)
@@ -782,6 +765,7 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
         performance.now() / 1000,
         echo.current.kick * Math.max(atEight, atFinal, fixedZone),
         ECHO_MELT,
+        { m: maskM, amounts: amts.map((a) => Math.sqrt(Math.min(1, a))) },
       )
     }
 
@@ -983,19 +967,31 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
     ctx.restore()
   }, [progress, captureEyes, cameraAt, layout, piecesAt, gridAt, reduceMotion])
 
-  useMotionValueEvent(progress, 'change', draw)
+  // Every trigger (scroll, the lateral slide, the camera going down, the heartbeat loop…) only asks
+  // for a redraw; the frame is drawn once, in framer's render step, after all motion values of that
+  // frame have updated. (It used to redraw on each trigger: 2–3 full redraws per frame.)
+  const drawScheduled = useRef(false)
+  const requestDraw = useCallback(() => {
+    if (drawScheduled.current) return
+    drawScheduled.current = true
+    frame.render(() => {
+      drawScheduled.current = false
+      drawRef.current()
+    })
+  }, [])
+  useMotionValueEvent(progress, 'change', requestDraw)
 
 
-  useEffect(() => pan?.on('change', () => draw()), [pan, draw])
-  useEffect(() => down?.on('change', () => draw()), [down, draw])
+  useEffect(() => pan?.on('change', requestDraw), [pan, requestDraw])
+  useEffect(() => down?.on('change', requestDraw), [down, requestDraw])
 
 
 
   // Redraw once Geist is ready, and when the captions change (language switch)
   useEffect(() => {
-    document.fonts?.load(`700 20px ${CAPTION_FONT}`).then(() => draw()).catch(() => {})
+    document.fonts?.load(`700 20px ${CAPTION_FONT}`).then(requestDraw).catch(() => {})
   }, [draw])
-  useEffect(() => { draw() }, [captions, draw])
+  useEffect(() => { requestDraw() }, [captions, requestDraw])
 
   // Hover echo loop: eases in/out and keeps the flash travelling while hovered
   const drawRef = useRef(draw)
@@ -1071,7 +1067,7 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
         e.phase = hovered >= 0 || d.on || echoAlive ? e.beat / ECHO_BEAT_TRAVEL : -1
         e.kickVel += (-ECHO_KICK_SPRING.k * e.kick - ECHO_KICK_SPRING.c * e.kickVel) * dt
         e.kick += e.kickVel * dt
-        drawRef.current()
+        requestDraw()
       }
 
       // Push on hover: the module under the cursor tilts back towards it
@@ -1093,7 +1089,7 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
       presses.current.forEach((pr, i) => { if (i !== under) pr.target = 0 })
 
       // Logos marquee runs on time while the lateral scene is visible
-      if ((panRef.current?.get() ?? 0) > 0.001) drawRef.current()
+      if ((panRef.current?.get() ?? 0) > 0.001) requestDraw()
 
       // Push springs (underdamped → a little wobble on release)
       if (presses.current.size) {
@@ -1103,7 +1099,7 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
           pr.amt += pr.vel * dt
           if (!pr.target && Math.abs(pr.amt) < 0.001 && Math.abs(pr.vel) < 0.01) presses.current.delete(i)
         })
-        drawRef.current()
+        requestDraw()
       }
       raf = requestAnimationFrame(tick)
     }
@@ -1138,11 +1134,8 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
       size.current = { w: width, h: height, dpr }
       canvas.width = Math.round(width * dpr)
       canvas.height = Math.round(height * dpr)
-      const off = echoCanvas.current ?? (echoCanvas.current = document.createElement('canvas'))
-      off.width = Math.max(1, Math.round(width / 2))
-      off.height = Math.max(1, Math.round(height / 2))
       fx.current?.resize(width, height, dpr)
-      draw()
+      requestDraw()
     })
     ro.observe(canvas)
     return () => ro.disconnect()
@@ -1185,9 +1178,8 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
       started = true
       import('./echoFx').then(({ createEchoFx }) => {
         const canvas = fxCanvasRef.current
-        const mask = echoCanvas.current ?? (echoCanvas.current = document.createElement('canvas'))
         if (cancelled || !canvas) return
-        const effect = createEchoFx(canvas, mask)
+        const effect = createEchoFx(canvas, LOGO_POLYS)
         const { w, h, dpr } = size.current
         if (w) effect.resize(w, h, dpr)
         fx.current = effect

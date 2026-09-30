@@ -28,6 +28,10 @@ const easeOutCubic = (t: number) => 1 - (1 - t) ** 3
 const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2)
 const clamp01 = (t: number) => Math.min(1, Math.max(0, t))
 
+const IDLE_FPS = 20       // redraw rate at rest (the side sheets ripple slowly)
+const ENTRANCE_S = 4.5    // the entrance (sheets, name, dots) is over by then
+const TRAIL_S = 2.5       // the pointer trail has dried out this long after the last move
+
 const easeOutExpo = (t: number) => (t >= 1 ? 1 : 1 - 2 ** (-10 * t))
 
 /** Heartbeat: a strong thump and a softer second one ("lub-dub"), 0..1 */
@@ -174,6 +178,13 @@ export default function ProjectsReel({ projects, filter, onFilter, pos, visible,
     let wasOn = false
     let enteredAt = 0
     let enteredOn = 0
+    // Idle frames are skipped: every frame is drawn only while something moves (scroll, hover,
+    // the pointer trail, the entrance, a title change); at rest it drops to IDLE_FPS, enough for
+    // the slow ripple of the side sheets
+    let lastDraw = 0
+    let lastPointerMove = -1e9
+    let drawnPos = NaN
+    let drawnSize = ''
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick)
       const r = reel.current
@@ -233,6 +244,17 @@ export default function ProjectsReel({ projects, filter, onFilter, pos, visible,
         ? 1
         : easeInOutCubic(clamp01((since - REVEAL_DELAY - Math.abs(i - enteredOn) * REVEAL_STAGGER) / REVEAL_S)))
       const titleReveal = reduceMotion ? 1 : easeOutCubic(clamp01((since - TITLE_REVEAL_AT) / TITLE_REVEAL_S))
+
+      if (ptr && (ptr.vx !== 0 || ptr.vy !== 0)) lastPointerMove = t
+      const size = `${W}x${H}`
+      const busy =
+        vel !== 0 || Math.abs(p - drawnPos) > 1e-4 || !(drawnPos === drawnPos) || size !== drawnSize ||
+        since < ENTRANCE_S || e < 1 || t - lastPointerMove < TRAIL_S ||
+        hover.current.some((hv) => hv.amt > 0.001 || Math.abs(hv.vel) > 0.001)
+      if (!busy && t - lastDraw < 1 / IDLE_FPS) return
+      lastDraw = t
+      drawnPos = p
+      drawnSize = size
 
       r.render({
         order: list.map((pr) => PROJECTS.indexOf(pr)),
