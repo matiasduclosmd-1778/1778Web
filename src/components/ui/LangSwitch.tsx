@@ -9,7 +9,7 @@ export default function LangSwitch() {
     <button
       onClick={toggle}
       aria-label={isEN ? 'Cambiar a Español' : 'Switch to English'}
-      className="relative flex items-center rounded-full focus:outline-none flex-shrink-0"
+      className="relative flex items-center rounded-full focus:outline-none focus-visible:ring-1 focus-visible:ring-white/40 flex-shrink-0 after:absolute after:-inset-2.5 after:content-['']"
       style={{
         width: 72,
         height: 26,

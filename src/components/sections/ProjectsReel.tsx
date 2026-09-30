@@ -275,8 +275,8 @@ export default function ProjectsReel({ pos, visible, preload, onSelect }: Projec
 
       {/* Dots */}
       <div
-        className="absolute left-0 right-0 flex justify-center gap-3"
-        style={{ top: l.top + l.h + nameSize * 0.45 + 18 }}
+        className="absolute left-0 right-0 flex justify-center"
+        style={{ top: l.top + l.h + nameSize * 0.45 + 18 - 16 }}
       >
         {PROJECTS.map((p, i) => (
           <button
@@ -285,9 +285,14 @@ export default function ProjectsReel({ pos, visible, preload, onSelect }: Projec
             aria-label={p.name}
             aria-current={i === active ? 'true' : undefined}
             onClick={() => go(i)}
-            className="w-3 h-3 md:w-3.5 md:h-3.5 rounded-full transition-colors duration-300"
-            style={{ background: i === active ? '#ffffff' : 'rgba(255,255,255,0.35)' }}
-          />
+            // The dot is 12px; the button around it is a finger-sized 36 × 44 target
+            className="w-9 h-11 -mx-1.5 flex items-center justify-center"
+          >
+            <span
+              className="block w-3 h-3 md:w-3.5 md:h-3.5 rounded-full transition-colors duration-300"
+              style={{ background: i === active ? '#ffffff' : 'rgba(255,255,255,0.35)' }}
+            />
+          </button>
         ))}
       </div>
     </div>

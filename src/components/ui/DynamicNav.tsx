@@ -206,7 +206,7 @@ export default function DynamicNav() {
                       href={href}
                       aria-current={active === id ? 'true' : undefined}
                       // Difference blend: cream on black, near-black wherever the liquid flows under it
-                      className="relative z-10 block px-2.5 md:px-3 py-1 text-[13px] md:text-sm whitespace-nowrap mix-blend-difference"
+                      className="relative z-10 block px-2.5 md:px-3 py-1 text-[13px] md:text-sm whitespace-nowrap mix-blend-difference after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-['']"
                       style={{ color: '#E1E0CC' }}
                       onMouseEnter={() => setHovered(id)}
                       onFocus={() => setHovered(id)}

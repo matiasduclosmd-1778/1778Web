@@ -18,6 +18,8 @@ html.lenis, html.lenis body { height: auto; }
 
 .lenis.lenis-smooth { scroll-behavior: auto !important; }
 .lenis.lenis-stopped { overflow: hidden; }
+/* iOS Safari ignores overflow on <html> for touch scrolling: hold the body too while a hold runs */
+.lenis.lenis-stopped body { overflow: hidden; touch-action: none; }
 
 html {
   /* Off-screen scenes (the lateral slide) must never widen the page on phones; clip keeps sticky working */
