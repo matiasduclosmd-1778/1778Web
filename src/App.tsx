@@ -1,4 +1,4 @@
-import { Hero, Arte, Contactos } from '@/components/sections'
+import { Hero, Contactos } from '@/components/sections'
 import { DynamicNav, ScrollHint } from '@/components/ui'
 import { useLenis } from '@/hooks/useLenis'
 import { useRollingLinks } from '@/hooks/useRollingLinks'
@@ -12,7 +12,6 @@ export default function App() {
       <DynamicNav />
       <ScrollHint />
       <Hero />
-      <Arte />
       <Contactos />
     </main>
   )

@@ -2,6 +2,7 @@ import { motion, useInView, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Instagram } from 'lucide-react'
 import { useRef, useState, useEffect } from 'react'
 import { useLang } from '@/contexts/LangContext'
+import { LiquidText } from '@/components/ui'
 
 const WORDS = ['Hablemos', "Let's talk", 'Parlons', '聊聊吧', 'Reden wir', 'Поговорим']
 
@@ -45,6 +46,8 @@ export default function Contactos() {
   const { t } = useLang()
   const ref      = useRef(null)
   const isInView = useInView(ref, { once: true, amount: 'some' })
+  const headRef  = useRef(null)
+  const headIn   = useInView(headRef, { once: true, amount: 0.6 })
 
   return (
     <section id="contactos" className="bg-black pt-20 pb-[max(5rem,env(safe-area-inset-bottom))] md:py-28 px-5 md:px-8 border-t border-white/5">
@@ -55,10 +58,13 @@ export default function Contactos() {
         </p>
 
         <h2
+          ref={headRef}
           className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-medium leading-[0.9] tracking-[-0.04em] mb-8"
           style={{ color: '#E1E0CC' }}
         >
-          <CyclingHeading />
+          <LiquidText show={headIn} block>
+            <CyclingHeading />
+          </LiquidText>
         </h2>
 
         <div ref={ref}>

@@ -74,6 +74,17 @@ function lateralFrame(W: number, H: number, s: number, ox: number, oy: number) {
   }
 }
 
+/**
+ * Logos screen, measured on the card once the camera has settled (card px): the module size and
+ * where the logos row starts — so DOM content (the services grid) can sit on the canvas grid lines
+ */
+export function lateralGrid(W: number, H: number) {
+  const logoH = Math.min(H * 0.56, (W * 0.62 * LOGO_H) / LOGO_W)
+  const zoom = isPortrait(W, H) ? FINAL_ZOOM_PORTRAIT : FINAL_ZOOM
+  const module = CELL_H * (logoH / LOGO_H) * zoom
+  return { module, logosTop: H / 2 + LATERAL_ROW_Y * H - module / 2 }
+}
+
 // Client logos ride inside one module row of the grid (so they tilt with it) in the lateral scene
 const LOGO_ROW = { glyphRow: 1, row: 2 } // between module lines 2 and 3 of the lower glyph row
 const LOGO_SPEED = 0.55                  // module heights per second

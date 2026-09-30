@@ -17,10 +17,9 @@ export interface Translations {
     /** Label on the pill the pixel hand drops on the "8" */
     effectLabel: string
     /** Lateral scene after the closing frame: "<prefix> <item>", the item flipping in a loop */
-    lateral: { prefix: string; items: string[] }
+    lateral: { prefix: string; items: string[]; services: string[] }
   }
   clientes: { label: string }
-  arte: { label: string; works: string; hint: string; hintTouch: string }
   contactos: { label: string; heading: string; body: string; footer: string }
 }
 
@@ -52,10 +51,10 @@ export const translations: Record<Lang, Translations> = {
       lateral: {
         prefix: 'Desarrollamos',
         items: ['sistemas de diseño', 'ideas ganadoras', 'conceptos', 'frontEnd creativo'],
+        services: ['UX & UI', 'Branding', 'Multimedia works', 'Atomic systems'],
       },
     },
     clientes:  { label: 'Clientes frecuentes' },
-    arte:      { label: 'Portfolio', works: '2026 trabajos', hint: 'Doble click para abrir · Arrastrar para mover', hintTouch: 'Tocá un archivo para abrirlo' },
     contactos: {
       label: 'Contacto', heading: 'Hablemos.',
       body:   '¿Tenés un proyecto en mente? Contanos sobre él y trabajemos juntos para hacerlo realidad.',
@@ -90,10 +89,10 @@ export const translations: Record<Lang, Translations> = {
       lateral: {
         prefix: 'We develop',
         items: ['design systems', 'winning ideas', 'concepts', 'creative front-end'],
+        services: ['UX & UI', 'Branding', 'Multimedia works', 'Atomic systems'],
       },
     },
     clientes:  { label: 'Frequent clients' },
-    arte:      { label: 'Portfolio', works: '2026 works', hint: 'Double-click to open · Drag to move', hintTouch: 'Tap a file to open it' },
     contactos: {
       label: 'Contact', heading: "Let's talk.",
       body:   "Have a project in mind? Tell us about it and let's work together to make it happen.",

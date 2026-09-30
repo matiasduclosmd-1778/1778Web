@@ -175,7 +175,8 @@ export default function DynamicNav() {
               key="menu"
               className="flex items-center"
               initial={{ opacity: 0, filter: 'blur(6px)', scale: 0.92 }}
-              animate={{ opacity: 1, filter: 'blur(0px)', scale: 1, transition: { ...ITEM_IN, delay: 0.08 } }}
+              // Blur on a tween: a spring overshoots below zero and blur() rejects negative values
+              animate={{ opacity: 1, filter: 'blur(0px)', scale: 1, transition: { ...ITEM_IN, delay: 0.08, filter: { duration: 0.3, delay: 0.08 } } }}
               exit={{ opacity: 0, filter: 'blur(6px)', scale: 0.92, transition: { duration: 0.14 } }}
             >
               <div className="w-px h-4 bg-white/10 mx-2.5 md:mx-3" />
