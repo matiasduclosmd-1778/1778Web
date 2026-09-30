@@ -15,4 +15,6 @@ export const PROJECTS: Project[] = [
   { name: 'Domene Presskit',   image: '/projects/domene-presskit.webp',  url: '#' },
   { name: 'Bola88 Brandbook',  image: '/projects/bola88-brandbook.webp', url: '#' },
   { name: 'OhGift Prototype',  image: '/projects/ohgift-prototype.webp', url: '#' },
+  { name: 'Halley Brand Guidelines', image: '/projects/halley-brand-guidelines.webp', url: 'https://halleybrandguidelines.vercel.app' },
+  { name: 'MDM Salud',               image: '/projects/mdm-salud.webp',               url: 'https://mdm-salud.vercel.app/index.html' },
 ]
