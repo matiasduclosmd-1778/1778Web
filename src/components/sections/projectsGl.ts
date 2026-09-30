@@ -429,14 +429,20 @@ export function createReel(canvas: HTMLCanvasElement, images: string[]) {
     const ctx = textCtx
     ctx.setTransform(DPR, 0, 0, DPR, 0, -bandTop * DPR)
     ctx.clearRect(0, bandTop, W, bandH)
-    ctx.font = `700 ${f.titleSize}px ${TITLE_FONT}`
-    ;(ctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = `${-0.02 * f.titleSize}px`
+    const setFont = (size: number) => {
+      ctx.font = `700 ${size}px ${TITLE_FONT}`
+      ;(ctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = `${-0.02 * size}px`
+    }
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     for (const t of f.titles) {
       if (t.alpha * tr <= 0.01) continue
       const x = W / 2 + t.x
       const text = t.text.toUpperCase()
+      // Long names shrink to fit the width (never wider than 92% of the view)
+      setFont(f.titleSize)
+      const wide = ctx.measureText(text).width
+      if (wide > W * 0.92) setFont(f.titleSize * (W * 0.92) / wide)
       // Entrance: the name rises a little as it fades in, once its image has inked in
       const y = f.titleY + (1 - tr) * f.titleSize * 0.35
       const alpha = t.alpha * tr

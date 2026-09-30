@@ -1,6 +1,7 @@
 /**
- * Projects shown in the Works reel. Placeholders — swap in the real name, image and link.
- * Images should be landscape (~16:10); any size, they are cropped to fit.
+ * Projects shown in the Works reel. Names are shown in capitals.
+ * Images: 1600 × 1000 WebP (quality ~65–80) in public/projects; other ratios are cropped to fit.
+ * `url: '#'` = no link yet (the image is just a hover area).
  */
 export interface Project {
   name: string
@@ -9,8 +10,9 @@ export interface Project {
 }
 
 export const PROJECTS: Project[] = [
-  { name: 'Name Website', image: 'https://picsum.photos/seed/1778p1/1600/1000', url: '#' },
-  { name: 'Brand System', image: 'https://picsum.photos/seed/1778p2/1600/1000', url: '#' },
-  { name: 'Motion Reel',  image: 'https://picsum.photos/seed/1778p3/1600/1000', url: '#' },
-  { name: 'Atomic Kit',   image: 'https://picsum.photos/seed/1778p4/1600/1000', url: '#' },
+  { name: 'Red Bull 3D Stage', image: '/projects/redbull-3d-stage.webp', url: '#' },
+  { name: 'Byebye Artwork',    image: '/projects/byebye-artwork.webp',   url: '#' },
+  { name: 'Domene Presskit',   image: '/projects/domene-presskit.webp',  url: '#' },
+  { name: 'Bola88 Brandbook',  image: '/projects/bola88-brandbook.webp', url: '#' },
+  { name: 'OhGift Prototype',  image: '/projects/ohgift-prototype.webp', url: '#' },
 ]
