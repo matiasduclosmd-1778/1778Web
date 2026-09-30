@@ -1,4 +1,4 @@
-import { Hero, Clientes, Arte, Contactos } from '@/components/sections'
+import { Hero, Arte, Contactos } from '@/components/sections'
 import { useLenis } from '@/hooks/useLenis'
 import { useRollingLinks } from '@/hooks/useRollingLinks'
 
@@ -9,7 +9,6 @@ export default function App() {
   return (
     <main className="bg-black">
       <Hero />
-      <Clientes />
       <Arte />
       <Contactos />
     </main>

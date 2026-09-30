@@ -2,19 +2,21 @@ import { motion, AnimatePresence, useScroll, useSpring, useTransform, useMotionV
 import { ArrowDown, ArrowRight, Menu, X } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { useLang } from '@/contexts/LangContext'
-import { scrollTo, holdScroll } from '@/hooks/useLenis'
+import { scrollTo, holdScroll, holdThenGlide } from '@/hooks/useLenis'
 import { LangSwitch } from '@/components/ui'
 import HeroFace from './HeroFace'
-import LogoMorph, { PAN_FRAC, DROP_AT, DROP_HOLD_MS } from './LogoMorph'
+import LogoMorph, { PAN_FRAC, DROP_AT, DROP_IMPACT_MS, WORKS_DROP } from './LogoMorph'
 import LateralScene from './LateralScene'
 
-// Pinned scroll budget (vh): morph → dwell on the closing frame → lateral scene
+// Pinned scroll budget (vh): morph → dwell on the closing frame → lateral scene → down to Works
 const MORPH_VH = 370
 const DWELL_VH = 50
 const LATERAL_VH = 380
-const PIN_VH = MORPH_VH + DWELL_VH + LATERAL_VH
+const WORKS_VH = 260
+const PIN_VH = MORPH_VH + DWELL_VH + LATERAL_VH + WORKS_VH
 const MORPH_END = MORPH_VH / PIN_VH                // progress where the closing frame lands
 const LATERAL_START = (MORPH_VH + DWELL_VH) / PIN_VH
+const WORKS_START = (MORPH_VH + DWELL_VH + LATERAL_VH) / PIN_VH
 const PAN_SHARE = 0.22                             // share of the lateral stretch spent sliding
 const FINAL_HOLD_MS = 1000                         // how long the closing frame holds the scroll
 
@@ -34,10 +36,20 @@ export default function Hero() {
   const morphSource = useTransform(scrollYProgress, [0, MORPH_END], [0, 1], { clamp: true })
   const morph = useSpring(morphSource, { stiffness: 90, damping: 24, mass: 0.6, restDelta: 0.00005 })
   // Lateral stretch: the camera slides right into the next scene
-  const lateralSource = useTransform(scrollYProgress, [LATERAL_START, 1], [0, 1], { clamp: true })
+  const lateralSource = useTransform(scrollYProgress, [LATERAL_START, WORKS_START], [0, 1], { clamp: true })
   const lateral = useSpring(lateralSource, { stiffness: 90, damping: 24, mass: 0.6, restDelta: 0.00005 })
   const pan = useTransform(lateral, (v) => easeInOutCubic(Math.min(1, Math.max(0, v / PAN_SHARE))))
   const finalShift = useTransform(pan, (v) => `${-v * PAN_FRAC * 100}%`)
+  // Works: the camera moves down, the grid carries on and the title rises in
+  const downSource = useTransform(scrollYProgress, [WORKS_START, 1], [0, 1], { clamp: true })
+  const downSpring = useSpring(downSource, { stiffness: 90, damping: 24, mass: 0.6, restDelta: 0.00005 })
+  const down = useTransform(downSpring, (v) => easeInOutCubic(Math.min(1, Math.max(0, v / 0.5))))
+  const worksY = useTransform(down, (v) => `${(1 - v) * WORKS_DROP * 100}%`)
+  // …then the scene melts into white: grid + chromatic "8" blur away, "Works" turns black
+  const whiten = useTransform(downSpring, (v) => easeInOutCubic(Math.min(1, Math.max(0, (v - 0.55) / 0.35))))
+  const sceneBlur = useTransform(whiten, (w) => `blur(${w * 14}px)`)
+  const sceneOpacity = useTransform(whiten, [0, 1], [1, 0.2])
+  const worksColor = useTransform(whiten, [0, 1], ['#ffffff', '#000000'])
 
   // Magnet on the closing frame: arriving there (scrolling down) parks the page for a moment
   const heldRef = useRef(false)
@@ -45,12 +57,15 @@ export default function Hero() {
   useMotionValueEvent(scrollYProgress, 'change', (v) => {
     const section = sectionRef.current
     if (!section) return
-    // Same magnet on the "8" while the pixel hand drops the effect in
+    // On the "8": park while the pixel hand drops the effect in; as soon as it switches on,
+    // the camera carries on by itself to the closing frame
     const dropAt = DROP_AT * MORPH_END
     if (v < dropAt - 0.03) dropHeldRef.current = false
     if (!dropHeldRef.current && v >= dropAt && scrollYProgress.getPrevious()! < dropAt) {
       dropHeldRef.current = true
-      holdScroll(section.offsetTop + dropAt * (section.offsetHeight - window.innerHeight), DROP_HOLD_MS)
+      const pinned = section.offsetHeight - window.innerHeight
+      heldRef.current = true // the glide lands on the closing frame: no second magnet there
+      holdThenGlide(section.offsetTop + dropAt * pinned, DROP_IMPACT_MS + 120, section.offsetTop + MORPH_END * pinned)
       return
     }
     if (v < MORPH_END - 0.03) heldRef.current = false
@@ -90,13 +105,14 @@ export default function Hero() {
 
   return (
     <section id="hero" ref={sectionRef} className="relative" style={{ height: `${PIN_VH + 100}vh` }}>
-      {/* Nav target for "Servicios": the lateral scene, once it has slid in */}
-      <div
-        id="servicios"
-        aria-hidden
-        className="absolute left-0 w-px h-px"
-        style={{ top: `${MORPH_VH + DWELL_VH + LATERAL_VH * PAN_SHARE}vh` }}
-      />
+      {/* Nav targets for "Servicios" and "Clientes": the lateral scene, once it has slid in */}
+      {[
+        ['servicios', MORPH_VH + DWELL_VH + LATERAL_VH * PAN_SHARE],
+        ['clientes', MORPH_VH + DWELL_VH + LATERAL_VH * PAN_SHARE],
+        ['works', PIN_VH],
+      ].map(([id, top]) => (
+        <div key={id} id={String(id)} aria-hidden className="absolute left-0 w-px h-px" style={{ top: `${top}vh` }} />
+      ))}
       <div className="sticky top-0 h-screen p-4 md:p-6">
 
 
@@ -271,7 +287,9 @@ export default function Hero() {
           <HeroFace phrases={t.hero.phrases} morph={morph} eyesRef={eyesRef} />
         </div>
 
-        <LogoMorph progress={morph} eyesRef={eyesRef} captions={t.hero.captions} pan={pan} clientsLabel={t.clientes.label} effectLabel={t.hero.effectLabel} />
+        <motion.div className="absolute inset-0" style={{ filter: sceneBlur, opacity: sceneOpacity }}>
+          <LogoMorph progress={morph} eyesRef={eyesRef} captions={t.hero.captions} pan={pan} down={down} effectLabel={t.hero.effectLabel} />
+        </motion.div>
 
         {/* ── Closing hero frame (slides out left with the camera) ─ */}
         <motion.div className="absolute inset-0 z-10 pointer-events-none" style={{ x: finalShift }}>
@@ -305,7 +323,18 @@ export default function Hero() {
         </motion.div>
 
         {/* ── Lateral scene ─────────────────────────────────────── */}
-        <LateralScene pan={pan} />
+        <LateralScene pan={pan} down={down} />
+
+        {/* ── Works (same card: the camera moves down onto it, then all goes white) ── */}
+        <motion.div className="absolute inset-0 z-10 bg-white pointer-events-none" style={{ opacity: whiten }} />
+        <motion.div className="absolute inset-0 z-10 pointer-events-none" style={{ y: worksY }}>
+          <motion.h2
+            className="absolute left-5 md:left-[5%] top-[18%] leading-none tracking-[-0.02em] text-[clamp(3rem,9vw,9rem)]"
+            style={{ color: worksColor, fontFamily: '"Geist", sans-serif', fontWeight: 700 }}
+          >
+            Works
+          </motion.h2>
+        </motion.div>
 
         {/* ── CTAs ──────────────────────────────────────────────── */}
         <motion.div

@@ -1,7 +1,7 @@
 import { AnimatePresence, motion, MotionValue, useMotionValueEvent, useTransform } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { useLang } from '@/contexts/LangContext'
-import { PAN_FRAC } from './LogoMorph'
+import { PAN_FRAC, WORKS_DROP } from './LogoMorph'
 import { CLIENT_LOGOS } from '@/data/clients'
 
 // The scene the camera slides into after the hero's closing frame:
@@ -20,9 +20,11 @@ const flip = {
 interface LateralSceneProps {
   /** 0 → 1 camera slide (the scene enters from the right with it) */
   pan: MotionValue<number>
+  /** 0 → 1 camera travel down to Works (the scene leaves upwards with it) */
+  down: MotionValue<number>
 }
 
-export default function LateralScene({ pan }: LateralSceneProps) {
+export default function LateralScene({ pan, down }: LateralSceneProps) {
   const { t } = useLang()
   const { prefix, items } = t.hero.lateral
 
@@ -37,9 +39,10 @@ export default function LateralScene({ pan }: LateralSceneProps) {
   }, [visible, items.length])
 
   const x = useTransform(pan, (v) => `${(1 - v) * PAN_FRAC * 100}%`)
+  const y = useTransform(down, (v) => `${-v * WORKS_DROP * 100}%`)
 
   return (
-    <motion.div className="absolute inset-0 z-10 pointer-events-none" style={{ x }}>
+    <motion.div className="absolute inset-0 z-10 pointer-events-none" style={{ x, y }}>
       {/* Headline */}
       <h2
         className="absolute left-5 right-5 top-[30%] md:top-[33%] text-center text-white leading-[1.15] tracking-[-0.01em] text-[clamp(1.6rem,3.4vw,3.4rem)]"

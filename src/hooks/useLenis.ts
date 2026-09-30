@@ -23,6 +23,26 @@ export function holdScroll(y: number, ms: number) {
   window.setTimeout(() => lenis.start(), ms)
 }
 
+/**
+ * Park the page at `y`, wait `ms`, then glide on its own to `to` (user input is
+ * ignored until it arrives) — used to carry the camera to the next frame.
+ */
+export function holdThenGlide(y: number, ms: number, to: number, duration = 1.8) {
+  const lenis = _lenis
+  if (!lenis) return
+  lenis.scrollTo(y, { immediate: true, force: true })
+  lenis.stop()
+  window.setTimeout(() => {
+    lenis.start()
+    lenis.scrollTo(to, {
+      duration,
+      lock: true,
+      force: true,
+      easing: (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2),
+    })
+  }, ms)
+}
+
 export function useLenis() {
   useEffect(() => {
     const lenis = new Lenis({

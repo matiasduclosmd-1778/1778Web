@@ -52,6 +52,9 @@ const FINAL_TILT = 0.12
 export const PAN_FRAC = 1.28
 // The lower "7" and "8" (they carry the chromatic aberration) stay through the slide; the top row clears
 const STAYING_GLYPHS = [2, 3]
+// Works: from the logos screen the camera travels down by this share of the card height
+export const WORKS_DROP = 1
+
 // Logos screen framing (camera level): the "8" peeks in on the left, the logos row sits below centre
 const LATERAL_ZOOM = FINAL_ZOOM
 const LATERAL_PEEK = 0.1    // share of the width the "8" keeps on screen
@@ -84,6 +87,7 @@ const ECHO_MELT = 16                          // CSS px of glyph edge that disso
 // which switches the echo on for good on the lower "7" and the "8"
 export const DROP_AT = 0.858                  // morph progress that triggers it (Hero also holds the scroll here)
 export const DROP_HOLD_MS = DROP_TOTAL * 1000
+export const DROP_IMPACT_MS = DROP_IMPACT * 1000 // the effect switches on here
 const DROP_TARGET = { x: 372, y: 322 }        // landing point, SVG units (dark space right of the "8")
 const CA_GLYPHS = [2, 3]                      // lower "7" and "8" in LOGO_POLYS
 // Physics: the trail grows on an underdamped spring (overshoots, then settles),
@@ -268,15 +272,17 @@ interface LogoMorphProps {
   captions: string[][]
   /** 0 → 1: lateral camera slide after the closing frame */
   pan?: MotionValue<number>
-  /** Small label written on the logos row */
-  clientsLabel?: string
+  /** 0 → 1: camera moves down from the logos screen to "Works" */
+  down?: MotionValue<number>
   /** Text on the dragged pill */
   effectLabel?: string
   /** The two DOM eyes the morph starts from */
   eyesRef: RefObject<(HTMLElement | null)[]>
 }
 
-export default function LogoMorph({ progress, eyesRef, captions, pan, clientsLabel = '', effectLabel = '' }: LogoMorphProps) {
+export default function LogoMorph({ progress, eyesRef, captions, pan, down, effectLabel = '' }: LogoMorphProps) {
+  const downRef = useRef(down)
+  downRef.current = down
   const panRef = useRef(pan)
   panRef.current = pan
   const reduceMotion = useReducedMotion()
@@ -305,8 +311,6 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, clientsLab
   const lastPieces = useRef<{ q: Quad; alpha: number }[]>([])
   const captionsRef = useRef(captions)
   captionsRef.current = captions
-  const labelRef = useRef(clientsLabel)
-  labelRef.current = clientsLabel
   const effectLabelRef = useRef(effectLabel)
   effectLabelRef.current = effectLabel
   // Drag & drop beat: when it started (ms), and whether the effect is switched on for good
@@ -528,6 +532,8 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, clientsLab
       zoom = lerp(zoom, LATERAL_ZOOM, slide)
       rot = lerp(rot, 0, slide)
     }
+    // …then down to "Works" (level camera, so a straight vertical move)
+    fy += ((downRef.current?.get() ?? 0) * WORKS_DROP * H) / zoom
     return { fx, fy, zoom, rot }
   }, [layout])
 
@@ -628,6 +634,24 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, clientsLab
       for (const x of grid.xs) { ctx.moveTo(x, cam.fy - reach); ctx.lineTo(x, cam.fy + reach) }
       for (const y of grid.ys) { ctx.moveTo(cam.fx - reach, y); ctx.lineTo(cam.fx + reach, y) }
       ctx.stroke()
+
+      // Beyond the logo the grid carries on at module spacing (fades in on the way down to Works)
+      const ext = downRef.current?.get() ?? 0
+      if (ext > 0.001) {
+        const { s, ox, oy } = layout()
+        const cw = CELL_W * s
+        const ch = CELL_H * s
+        const right = ox + LOGO_W * s
+        const bottom = oy + (GLYPH_Y[1] + CELL_H * 4) * s
+        ctx.save()
+        ctx.globalAlpha = grid.alpha * Math.min(1, ext * 2)
+        ctx.beginPath()
+        for (let x = right + cw; x < cam.fx + reach; x += cw) { ctx.moveTo(x, cam.fy - reach); ctx.lineTo(x, cam.fy + reach) }
+        for (let x = ox - cw; x > cam.fx - reach; x -= cw) { ctx.moveTo(x, cam.fy - reach); ctx.lineTo(x, cam.fy + reach) }
+        for (let y = bottom + ch; y < cam.fy + reach; y += ch) { ctx.moveTo(cam.fx - reach, y); ctx.lineTo(cam.fx + reach, y) }
+        ctx.stroke()
+        ctx.restore()
+      }
 
       ctx.strokeStyle = 'rgba(255,255,255,0.55)'
       ctx.beginPath()
@@ -803,7 +827,7 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, clientsLab
     // Client logos passing inside a grid row (lateral scene)
     const slid = panRef.current?.get() ?? 0
     if (slid > 0.001 && logoSprites.current.length === CLIENT_LOGOS.length) {
-      const { s, ox, oy } = layout()
+      const { s, oy } = layout()
       const rowH = CELL_H * s
       const top = oy + (GLYPH_Y[LOGO_ROW.glyphRow] + CELL_H * LOGO_ROW.row) * s
       const cy = top + rowH / 2
@@ -831,20 +855,6 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, clientsLab
         x += w + gap
       }
 
-      // Row label, pinned to the row's top line just after the "7"
-      const label = labelRef.current
-      if (label) {
-        ctx.globalAlpha = 0.35 * fadeIn
-        ctx.fillStyle = '#fff'
-        ctx.font = `700 ${rowH * 0.07}px ${CAPTION_FONT}`
-        ctx.textBaseline = 'top'
-        ctx.textAlign = 'center'
-        ctx.fillText(
-          label.toUpperCase().split('').join(String.fromCharCode(8202)),
-          lateralFrame(W, H, s, ox, oy).fx, top + rowH * 0.08,
-        )
-        ctx.textAlign = 'start'
-      }
       ctx.globalAlpha = 1
     }
 
@@ -916,6 +926,7 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, clientsLab
 
 
   useEffect(() => pan?.on('change', () => draw()), [pan, draw])
+  useEffect(() => down?.on('change', () => draw()), [down, draw])
 
 
 
