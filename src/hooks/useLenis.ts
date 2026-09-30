@@ -43,6 +43,12 @@ export function scrollTo(target: string | number, duration?: number) {
   })
 }
 
+/** Move the page to `y` at once (no animation) — for jumps nothing on screen should show */
+export function jumpTo(y: number) {
+  if (_lenis) _lenis.scrollTo(y, { immediate: true, force: true })
+  else window.scrollTo(0, y)
+}
+
 /**
  * Ease the page onto `y`, wait `ms`, then glide on its own to `to` (user input is ignored until
  * it arrives) — used to carry the camera to the next frame.

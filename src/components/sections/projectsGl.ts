@@ -253,7 +253,9 @@ export interface ReelTitle {
 }
 
 export interface ReelFrame {
-  /** Continuous project index under the camera (0 … n-1) */
+  /** Which images are in the reel and in what order (indices into the images given at creation) */
+  order: number[]
+  /** Continuous position along `order` (0 … order.length-1) */
   pos: number
   /** Active rect: centre (px, from the view centre, y up) and size */
   cx: number
@@ -485,8 +487,11 @@ export function createReel(canvas: HTMLCanvasElement, images: string[]) {
     },
     render(f: ReelFrame) {
       // Sheets → scene target
-      meshes.forEach((mesh, i) => {
+      meshes.forEach((mesh, m) => {
         const u = (mesh.material as THREE.ShaderMaterial).uniforms
+        // Place in the reel (filtered out → not drawn at all)
+        const i = f.order.indexOf(m)
+        if (i < 0) { mesh.visible = false; return }
         const off = (i - f.pos) * f.step
         const dist = Math.abs(off) / f.w
         if (f.reduced) {

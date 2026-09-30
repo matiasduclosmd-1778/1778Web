@@ -20,6 +20,8 @@ export interface Translations {
     lateral: { prefix: string; items: string[]; services: string[]; cta: string }
     /** Link to Instagram under the Works title */
     worksInstagram: string
+    /** Works filter tab that shows every project */
+    worksAll: string
   }
   clientes: { label: string }
   contactos: { label: string; heading: string; body: string; instagram: string; footer: string }
@@ -57,6 +59,7 @@ export const translations: Record<Lang, Translations> = {
         cta: 'Trabajemos juntos',
       },
       worksInstagram: 'Visitá nuestro Instagram',
+      worksAll: 'Todos',
     },
     clientes:  { label: 'Clientes frecuentes' },
     contactos: {
@@ -98,6 +101,7 @@ export const translations: Record<Lang, Translations> = {
         cta: "Let's work together",
       },
       worksInstagram: 'Visit our Instagram',
+      worksAll: 'All',
     },
     clientes:  { label: 'Frequent clients' },
     contactos: {

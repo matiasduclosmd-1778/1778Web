@@ -1,15 +1,15 @@
 import { motion, useScroll, useSpring, useTransform, useMotionValueEvent } from 'framer-motion'
 import { ArrowDown } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLang } from '@/contexts/LangContext'
-import { scrollTo, holdThenGlide, isScrollLocked } from '@/hooks/useLenis'
+import { scrollTo, holdThenGlide, isScrollLocked, jumpTo } from '@/hooks/useLenis'
 import { LiquidText, PillLink } from '@/components/ui'
 import { INSTAGRAM_URL, WHATSAPP_URL } from '@/data/contact'
 import HeroFace from './HeroFace'
 import LogoMorph, { PAN_FRAC, DROP_AT, DROP_IMPACT_MS, WORKS_DROP } from './LogoMorph'
 import LateralScene from './LateralScene'
 import ProjectsReel from './ProjectsReel'
-import { PROJECTS } from '@/data/projects'
+import { PROJECTS, projectsFor, type WorksFilter } from '@/data/projects'
 
 // Pinned scroll budget (vh): morph → dwell on the closing frame → lateral scene → down to Works
 // → the projects reel (one stop per project)
@@ -63,8 +63,15 @@ export default function Hero() {
   const downSpring = useSpring(downSource, CAMERA_SPRING)
   const down = useTransform(downSpring, (v) => easeInOutCubic(Math.min(1, Math.max(0, v))))
   const worksY = useTransform(down, (v) => `${(1 - v) * WORKS_DROP * 100}%`)
-  // Projects reel: the images slide sideways, one project per stop
-  const reelSource = useTransform(scrollYProgress, [REEL_START, REEL_END], [0, PROJECTS.length - 1], { clamp: true })
+  // Projects reel: the images slide sideways, one project per stop. The filter tabs pick which
+  // projects are in it; the scroll budget stays the same (sized for all of them), so filtering
+  // never changes the page height — fewer projects just get more scroll each
+  const [filter, setFilter] = useState<WorksFilter>('all')
+  const shown = useMemo(() => projectsFor(filter), [filter])
+  const countRef = useRef(shown.length)
+  countRef.current = shown.length
+  const reelSource = useTransform(scrollYProgress, (v) =>
+    Math.min(1, Math.max(0, (v - REEL_START) / (REEL_END - REEL_START))) * (countRef.current - 1))
   const reelPos = useSpring(reelSource, REEL_SPRING)
   const [reelVisible, setReelVisible] = useState(false)
   useMotionValueEvent(down, 'change', (v) => setReelVisible(v > 0.6))
@@ -74,12 +81,23 @@ export default function Hero() {
   const projectY = (i: number) => {
     const section = sectionRef.current
     if (!section) return null
-    const at = REEL_START + (PROJECTS.length > 1 ? i / (PROJECTS.length - 1) : 0) * (REEL_END - REEL_START)
+    const n = countRef.current
+    const at = REEL_START + (n > 1 ? i / (n - 1) : 0) * (REEL_END - REEL_START)
     return section.offsetTop + at * (section.offsetHeight - window.innerHeight)
   }
   const selectProject = (i: number) => {
     const y = projectY(i)
     if (y !== null) scrollTo(y)
+  }
+  // New filter: back to its first project at once (the camera doesn't move, only the reel — which
+  // replays its entrance for the new set)
+  const selectFilter = (f: WorksFilter) => {
+    if (f === filter) return
+    setFilter(f)
+    countRef.current = projectsFor(f).length
+    const y = projectY(0)
+    if (y !== null) jumpTo(y)
+    reelPos.jump(0)
   }
   // Snap: once the scroll comes to rest inside the reel, settle on the nearest project
   useEffect(() => {
@@ -92,7 +110,7 @@ export default function Hero() {
         const pinned = section.offsetHeight - window.innerHeight
         const v = (window.scrollY - section.offsetTop) / pinned
         if (v < REEL_START - 0.01 || v > REEL_END + 0.01) return
-        const n = PROJECTS.length - 1
+        const n = countRef.current - 1
         const i = Math.round(((Math.min(REEL_END, Math.max(REEL_START, v)) - REEL_START) / (REEL_END - REEL_START)) * n)
         const y = projectY(i)
         if (y !== null && Math.abs(y - window.scrollY) > 2) scrollTo(y, 0.7)
@@ -188,7 +206,15 @@ export default function Hero() {
 
         {/* ── Works (same card: the camera moves down onto it) ── */}
         <motion.div className="absolute inset-0 z-10 pointer-events-none" style={{ y: worksY }}>
-          <ProjectsReel pos={reelPos} visible={reelVisible} preload={reelPreload} onSelect={selectProject} />
+          <ProjectsReel
+            projects={shown}
+            filter={filter}
+            onFilter={selectFilter}
+            pos={reelPos}
+            visible={reelVisible}
+            preload={reelPreload}
+            onSelect={selectProject}
+          />
           <div className="absolute left-5 md:left-[5%] top-[16%] md:top-[18%]">
             <h2
               className="leading-none tracking-[-0.02em] text-[clamp(3rem,min(9vw,14vh),9rem)] uppercase"

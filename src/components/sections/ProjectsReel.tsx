@@ -1,6 +1,7 @@
-import { AnimatePresence, motion, MotionValue, useMotionValueEvent, useReducedMotion } from 'framer-motion'
+import { motion, MotionValue, useMotionValueEvent, useReducedMotion } from 'framer-motion'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { PROJECTS } from '@/data/projects'
+import { PROJECTS, WORKS_FILTERS, type Project, type WorksFilter } from '@/data/projects'
+import { useLang } from '@/contexts/LangContext'
 import type { Reel } from './projectsGl'
 import ReelDots from './ReelDots'
 
@@ -22,8 +23,6 @@ const REVEAL_DELAY = 0.15
 const REVEAL_STAGGER = 0.22
 const TITLE_REVEAL_AT = 0.9
 const TITLE_REVEAL_S = 0.6
-
-const CHIP_H = 24          // tag chip height, px
 
 const easeOutCubic = (t: number) => 1 - (1 - t) ** 3
 const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2)
@@ -53,6 +52,10 @@ function layoutFor(W: number, H: number) {
 const nameSizeFor = (W: number, H: number) => Math.min(106, Math.max(34, 0.066 * W), H * 0.11)
 
 interface ProjectsReelProps {
+  /** Projects in the reel (the current filter), in order */
+  projects: Project[]
+  filter: WorksFilter
+  onFilter: (filter: WorksFilter) => void
   /** Continuous project index (0 … n-1), already smoothed */
   pos: MotionValue<number>
   /** The reel is on screen (the camera has come down onto Works) */
@@ -63,7 +66,8 @@ interface ProjectsReelProps {
   onSelect: (index: number) => void
 }
 
-export default function ProjectsReel({ pos, visible, preload, onSelect }: ProjectsReelProps) {
+export default function ProjectsReel({ projects, filter, onFilter, pos, visible, preload, onSelect }: ProjectsReelProps) {
+  const { t: tr } = useLang()
   const reduceMotion = !!useReducedMotion()
   const rootRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -80,10 +84,19 @@ export default function ProjectsReel({ pos, visible, preload, onSelect }: Projec
   const activeRef = useRef(0)
   const visibleRef = useRef(visible)
   visibleRef.current = visible
+  const projectsRef = useRef(projects)
+  projectsRef.current = projects
+  // A new filter replays the entrance for the new set
+  const replay = useRef(false)
+  useEffect(() => {
+    replay.current = true
+    title.current = { cur: 0, prev: -1, dir: 1, since: performance.now() / 1000 }
+    setActive(0)
+  }, [filter])
   const inViewRef = useRef(true)
 
   useMotionValueEvent(pos, 'change', (v) => {
-    const next = Math.max(0, Math.min(PROJECTS.length - 1, Math.round(v)))
+    const next = Math.max(0, Math.min(projectsRef.current.length - 1, Math.round(v)))
     const tl = title.current
     if (next !== tl.cur) {
       title.current = { cur: next, prev: tl.cur, dir: next > tl.cur ? 1 : -1, since: performance.now() / 1000 }
@@ -171,10 +184,11 @@ export default function ProjectsReel({ pos, visible, preload, onSelect }: Projec
         prevPos = pos.get()
         return
       }
-      if (!wasOn) {
-        // (Re)entering Works: replay the entrance around the project in front
+      if (!wasOn || replay.current) {
+        // (Re)entering Works, or a new filter: replay the entrance around the project in front
         enteredAt = now / 1000
         enteredOn = Math.round(pos.get())
+        replay.current = false
       }
       wasOn = true
       const dt = Math.min(0.05, (now - last) / 1000)
@@ -209,17 +223,19 @@ export default function ProjectsReel({ pos, visible, preload, onSelect }: Projec
       const tl = title.current
       const e = easeOutExpo(Math.min(1, (t - tl.since) / TITLE_S))
       const slide = reduceMotion ? 0 : TITLE_SLIDE_PX
-      const titles = [{ text: PROJECTS[tl.cur].name, alpha: e, x: tl.dir * slide * (1 - e) }]
-      if (tl.prev >= 0 && e < 1) titles.unshift({ text: PROJECTS[tl.prev].name, alpha: 1 - e, x: -tl.dir * slide * e })
+      const list = projectsRef.current
+      const titles = [{ text: list[Math.min(tl.cur, list.length - 1)].name, alpha: e, x: tl.dir * slide * (1 - e) }]
+      if (tl.prev >= 0 && tl.prev < list.length && e < 1) titles.unshift({ text: list[tl.prev].name, alpha: 1 - e, x: -tl.dir * slide * e })
       const l = layoutFor(W, H)
       const nameSize = nameSizeFor(W, H)
       const since = t - enteredAt
-      const reveal = PROJECTS.map((_, i) => reduceMotion
+      const reveal = list.map((_, i) => reduceMotion
         ? 1
         : easeInOutCubic(clamp01((since - REVEAL_DELAY - Math.abs(i - enteredOn) * REVEAL_STAGGER) / REVEAL_S)))
       const titleReveal = reduceMotion ? 1 : easeOutCubic(clamp01((since - TITLE_REVEAL_AT) / TITLE_REVEAL_S))
 
       r.render({
+        order: list.map((pr) => PROJECTS.indexOf(pr)),
         pos: p,
         cx: 0,
         cy: H / 2 - (l.top + l.h / 2),
@@ -248,11 +264,15 @@ export default function ProjectsReel({ pos, visible, preload, onSelect }: Projec
 
   activeRef.current = active
   const l = layoutFor(box.W || 1, box.H || 1)
-  const project = PROJECTS[active]
+  const project = projects[Math.min(active, projects.length - 1)]
   const nameSize = nameSizeFor(box.W, box.H || 1)
-  const go = (i: number) => onSelect(Math.max(0, Math.min(PROJECTS.length - 1, i)))
-  // Under the name: the tag chips, then the dots
-  const chipsTop = l.top + l.h + nameSize * 0.42 + 6
+  const go = (i: number) => onSelect(Math.max(0, Math.min(projects.length - 1, i)))
+  // Filter tabs sit just above the image (never under the navbar)
+  const tabsTop = box.H < 520 && box.W >= box.H * 0.8
+    ? box.H * 0.18
+    : Math.max(64, l.top - (box.W < 768 ? 44 : 52))
+  const tabsCentered = box.W < box.H * 0.8
+  const tabsShort = !tabsCentered && box.H < 520
 
   const trackPointer = (e: React.PointerEvent) => {
     const r = rootRef.current?.getBoundingClientRect()
@@ -306,39 +326,61 @@ export default function ProjectsReel({ pos, visible, preload, onSelect }: Projec
       {/* The name is drawn on the canvas (so the liquid trail can smear it); this is for assistive tech */}
       <h3 className="sr-only uppercase" aria-live="polite">{project.name}</h3>
 
-      {/* Tags of the project in front: chips between the name and the dots */}
+      {/* Filter tabs, above the images */}
       <div
-        className="absolute left-0 right-0 flex justify-center transition-opacity duration-700 ease-out pointer-events-none"
-        style={{ top: chipsTop, height: CHIP_H, opacity: visible ? 1 : 0, transitionDelay: visible ? '1.15s' : '0s' }}
+        // Phones: centred. Wider screens: flush with the image's right edge, clear of the "WORKS" title
+        className={`absolute flex transition-[opacity,transform] duration-700 ease-out ${tabsCentered ? 'left-0 right-0 justify-center' : 'justify-end'}`}
+        style={{
+          top: tabsTop,
+          // Short screens (a phone on its side): pinned to the right edge, level with "WORKS"
+          ...(tabsCentered ? {} : { right: tabsShort ? 20 : box.W - (l.left + l.w) }),
+          opacity: visible ? 1 : 0,
+          transform: visible ? 'none' : 'translateY(-8px)',
+          transitionDelay: visible ? '0.6s' : '0s',
+          pointerEvents: visible ? 'auto' : 'none',
+        }}
       >
-        <AnimatePresence mode="popLayout" initial={false}>
-          <motion.ul key={active} className="flex gap-1.5" aria-label="Tags">
-            {project.tags.map((tag, i) => (
-              <motion.li
-                key={tag}
-                className="flex items-center h-6 px-2.5 rounded-full border border-white/25 text-[10px] md:text-[11px] uppercase tracking-[0.1em] text-white/85 leading-none"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0, transition: { duration: 0.35, delay: 0.08 + i * 0.06, ease: [0.16, 1, 0.3, 1] } }}
-                exit={{ opacity: 0, y: -6, transition: { duration: 0.15 } }}
+        <div role="tablist" aria-label="Works" className="flex gap-1.5 md:gap-2">
+          {WORKS_FILTERS.map((f) => {
+            const on = f.id === filter
+            return (
+              <button
+                key={f.id}
+                type="button"
+                role="tab"
+                aria-selected={on}
+                onClick={() => onFilter(f.id)}
+                className={`relative h-8 md:h-9 px-3.5 md:px-4 rounded-full text-xs md:text-sm whitespace-nowrap transition-colors duration-300 after:absolute after:-inset-y-1.5 after:inset-x-0 after:content-[''] ${
+                  on ? 'text-black' : 'text-white/80 hover:text-white'
+                }`}
               >
-                {tag}
-              </motion.li>
-            ))}
-          </motion.ul>
-        </AnimatePresence>
+                {/* Active: a cream pill that slides from tab to tab */}
+                {on && (
+                  <motion.span
+                    layoutId="works-tab"
+                    className="absolute inset-0 rounded-full bg-primary"
+                    transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                  />
+                )}
+                {!on && <span className="absolute inset-0 rounded-full border border-white/25" />}
+                <span className="relative">{f.label ?? tr.hero.worksAll}</span>
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* Dots */}
       <div
         className="absolute left-0 right-0 flex justify-center transition-[opacity,transform] duration-700 ease-out"
         style={{
-          top: chipsTop + CHIP_H + 2,
+          top: l.top + l.h + nameSize * 0.45 + 2,
           opacity: visible ? 1 : 0,
           transform: visible ? 'none' : 'translateY(8px)',
           transitionDelay: visible ? '1.3s' : '0s',
         }}
       >
-        <ReelDots count={PROJECTS.length} pos={pos} active={active} labels={PROJECTS.map((p) => p.name)} onSelect={go} />
+        <ReelDots key={filter} count={projects.length} pos={pos} active={active} labels={projects.map((p) => p.name)} onSelect={go} />
       </div>
     </div>
   )
