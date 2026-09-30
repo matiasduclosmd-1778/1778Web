@@ -1,7 +1,7 @@
 import { motion, AnimatePresence, useSpring } from 'framer-motion'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useLang } from '@/contexts/LangContext'
-import { scrollTo } from '@/hooks/useLenis'
+import { scrollTo, isAutoScrolling } from '@/hooks/useLenis'
 import LangSwitch from './LangSwitch'
 
 // Scrolled past this (px), the island opens up into the full menu
@@ -38,6 +38,9 @@ export default function DynamicNav() {
   const [hovered, setHovered] = useState<Id | null>(null)
   const navRef = useRef<HTMLElement>(null)
   const [active, setActive] = useState<Id>('home')
+  // The option just tapped stays selected while the page travels there (instead of the pill
+  // sweeping through every section on the way)
+  const chosen = useRef<Id | null>(null)
 
   useEffect(() => {
     // Section tops are measured on resize, not on every scroll (that would force a layout per frame)
@@ -52,8 +55,13 @@ export default function DynamicNav() {
     const onScroll = () => {
       setScrolled(window.scrollY > OPEN_AT)
       // Section in view (its top above the middle of the screen)
+      if (chosen.current) {
+        if (isAutoScrolling()) return
+        chosen.current = null
+      }
       const mid = window.scrollY + window.innerHeight * 0.5
-      setActive(mid >= tops.contact ? 'contact' : mid >= tops.works + window.innerHeight * 0.5 ? 'works' : 'home')
+      // Works lights up once the camera is on its way down onto it (half a screen before it lands)
+      setActive(mid >= tops.contact ? 'contact' : mid >= tops.works ? 'works' : 'home')
     }
     const onResize = () => { measure(); onScroll() }
     onResize()
@@ -211,7 +219,12 @@ export default function DynamicNav() {
                       onMouseEnter={() => setHovered(id)}
                       onFocus={() => setHovered(id)}
                       onBlur={() => setHovered(null)}
-                      onClick={(e) => { e.preventDefault(); scrollTo(to) }}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        chosen.current = id
+                        setActive(id)
+                        scrollTo(to)
+                      }}
                     >
                       {label}
                     </a>
