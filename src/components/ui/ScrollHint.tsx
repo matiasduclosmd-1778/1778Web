@@ -18,17 +18,18 @@ export default function ScrollHint() {
   const [show, setShow] = useState(false)
 
   useEffect(() => {
-    let raf = 0
+    // Checked on scroll, plus a light poll for holds / glides that start or end without one
     let last = false
-    const tick = () => {
+    const check = () => {
       const y = window.scrollY
       const end = document.documentElement.scrollHeight - window.innerHeight - END_GAP
       const next = y > START_AT && y < end && !isScrollLocked()
       if (next !== last) { last = next; setShow(next) }
-      raf = requestAnimationFrame(tick)
     }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
+    check()
+    window.addEventListener('scroll', check, { passive: true })
+    const poll = window.setInterval(check, 250)
+    return () => { window.removeEventListener('scroll', check); window.clearInterval(poll) }
   }, [])
 
   return (

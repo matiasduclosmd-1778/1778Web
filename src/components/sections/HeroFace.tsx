@@ -1,4 +1,4 @@
-import { motion, useSpring, useTransform, useMotionValue, useReducedMotion, animate, MotionValue } from 'framer-motion'
+import { motion, useSpring, useTransform, useMotionValue, useMotionValueEvent, useReducedMotion, animate, MotionValue } from 'framer-motion'
 import { RefObject, useEffect, useRef, useState } from 'react'
 import { MORPH_HANDOFF } from './LogoMorph'
 
@@ -62,6 +62,10 @@ export default function HeroFace({ phrases, morph, eyesRef }: HeroFaceProps) {
   const mouthOpacity = useTransform(morphProgress, [0, 0.03], [1, 0])
   const leftRef  = useRef<HTMLDivElement>(null)
   const rightRef = useRef<HTMLDivElement>(null)
+  // The face is on stage only until the morph takes over: while hidden, talking, blinking and
+  // wandering pause (no re-renders every few ms for a face nobody sees)
+  const onStage = useRef(true)
+  useMotionValueEvent(morphProgress, 'change', (v) => { onStage.current = v < 0.03 })
 
   // Pupil offsets (each eye aims on its own → natural convergence)
   const lx = useSpring(0, EYE_SPRING)
@@ -127,7 +131,7 @@ export default function HeroFace({ phrases, morph, eyesRef }: HeroFaceProps) {
     let wanderTimer: ReturnType<typeof setTimeout>
     const wander = () => {
       wanderTimer = setTimeout(() => {
-        if (!gazeFixed.current && performance.now() - lastMove > 4000) {
+        if (onStage.current && !gazeFixed.current && performance.now() - lastMove > 4000) {
           const w = window.innerWidth
           const h = window.innerHeight
           const p = Math.random() < 0.3
@@ -169,8 +173,10 @@ export default function HeroFace({ phrases, morph, eyesRef }: HeroFaceProps) {
     const blink = () => animate(lid, [1, 0.05, 1], { duration: 0.2, times: [0, 0.45, 1], ease: 'easeInOut' })
     const loop = () => {
       blinkTimer = setTimeout(() => {
-        blink()
-        if (Math.random() < 0.2) doubleTimer = setTimeout(blink, 260)
+        if (onStage.current) {
+          blink()
+          if (Math.random() < 0.2) doubleTimer = setTimeout(blink, 260)
+        }
         loop()
       }, 2200 + Math.random() * 3800)
     }
@@ -189,7 +195,12 @@ export default function HeroFace({ phrases, morph, eyesRef }: HeroFaceProps) {
       return
     }
     let alive = true
-    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+    // Every beat of the loop waits here; off stage it just idles until the face is back
+    const wait = async (ms: number) => {
+      await sleep(ms)
+      while (alive && !onStage.current) await sleep(400)
+    }
 
     ;(async () => {
       setText('')

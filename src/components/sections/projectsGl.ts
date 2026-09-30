@@ -93,14 +93,19 @@ const sheetFragment = /* glsl */ `
       // RGB split along X, stronger towards the folded edge; none on a sheet at rest in the centre
       float shift = (uEdge * 0.6 + abs(uVel)) * uRgbShift * uSide * vD;
       vec2 o = vec2(shift, 0.0);
-      // Out of the scene: blur that grows towards the folded edge. Always taken, no branch:
-      // a radius of 0 gives the sharp image and there is no seam where it starts
-      float br = uBlur * uEdge * smoothstep(0.0, 1.0, vD);
-      col = split(uv, o) * 0.2;
-      for (int k = 0; k < 8; k++) {
-        float a = float(k) * 0.785398;
-        vec2 d = vec2(cos(a), sin(a) * plane) * br;
-        col += split(uv + d, o) * 0.07 + split(uv + d * 0.5, o) * 0.03;
+      // Out of the scene: blur that grows towards the folded edge. The branch is on uniforms only
+      // (the whole sheet takes the same path), so there is no seam; the sheet in the scene skips
+      // the 48 extra taps entirely
+      if (uBlur * uEdge > 0.0002) {
+        float br = uBlur * uEdge * smoothstep(0.0, 1.0, vD);
+        col = split(uv, o) * 0.2;
+        for (int k = 0; k < 8; k++) {
+          float a = float(k) * 0.785398;
+          vec2 d = vec2(cos(a), sin(a) * plane) * br;
+          col += split(uv + d, o) * 0.07 + split(uv + d * 0.5, o) * 0.03;
+        }
+      } else {
+        col = split(uv, o);
       }
     } else {
       col = vec3(0.06, 0.08, 0.08);
@@ -388,7 +393,8 @@ export function createReel(canvas: HTMLCanvasElement, images: string[]) {
     resize(w: number, h: number, dpr: number) {
       W = w
       H = h
-      DPR = Math.min(dpr, 2)
+      // Phones: 1.5× reads the same on photos and saves ~45% of the fill-rate
+      DPR = Math.min(dpr, window.matchMedia('(pointer: coarse)').matches ? 1.5 : 2)
       renderer.setPixelRatio(DPR)
       renderer.setSize(w, h, false)
       camera.aspect = w / h

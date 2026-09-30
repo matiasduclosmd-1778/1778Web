@@ -40,19 +40,27 @@ export default function DynamicNav() {
   const [active, setActive] = useState<Id>('home')
 
   useEffect(() => {
-    const onScroll = () => {
-      setScrolled(window.scrollY > OPEN_AT)
-      // Section in view (its top above the middle of the screen)
-      const mid = window.scrollY + window.innerHeight * 0.5
+    // Section tops are measured on resize, not on every scroll (that would force a layout per frame)
+    let tops = { works: Infinity, contact: Infinity }
+    const measure = () => {
       const top = (sel: string) => {
         const el = document.querySelector<HTMLElement>(sel)
         return el ? el.getBoundingClientRect().top + window.scrollY : Infinity
       }
-      setActive(mid >= top('#contactos') ? 'contact' : mid >= top('#works') + window.innerHeight * 0.5 ? 'works' : 'home')
+      tops = { works: top('#works'), contact: top('#contactos') }
     }
-    onScroll()
+    const onScroll = () => {
+      setScrolled(window.scrollY > OPEN_AT)
+      // Section in view (its top above the middle of the screen)
+      const mid = window.scrollY + window.innerHeight * 0.5
+      setActive(mid >= tops.contact ? 'contact' : mid >= tops.works + window.innerHeight * 0.5 ? 'works' : 'home')
+    }
+    const onResize = () => { measure(); onScroll() }
+    onResize()
+    const ro = new ResizeObserver(onResize)
+    ro.observe(document.body)
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    return () => { ro.disconnect(); window.removeEventListener('scroll', onScroll) }
   }, [])
 
   const items: { id: Id; label: string; href: string; to: string | number }[] = [

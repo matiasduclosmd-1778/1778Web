@@ -77,8 +77,11 @@ export default function LateralScene({ pan, down }: LateralSceneProps) {
   const { prefix, items, services } = t.hero.lateral
 
   // The word after "Desarrollamos" flips every 0.5 s, looping — only while the scene is on screen
+  // (and stops once the camera has come down onto Works)
   const [visible, setVisible] = useState(false)
-  useMotionValueEvent(pan, 'change', (v) => setVisible(v > 0.3))
+  const syncVisible = () => setVisible(pan.get() > 0.3 && down.get() < 0.9)
+  useMotionValueEvent(pan, 'change', syncVisible)
+  useMotionValueEvent(down, 'change', syncVisible)
   // Headline and services write themselves in liquid ink as the camera settles on the screen
   const [inkShow, setInkShow] = useState(false)
   useMotionValueEvent(pan, 'change', (v) => setInkShow(v > 0.6))

@@ -335,6 +335,8 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
     kickVel: 0,
   })
   const pointer = useRef<{ x: number; y: number } | null>(null)
+  // The card is on screen (false once the page has scrolled past the hero)
+  const onScreen = useRef(true)
   const presses = useRef(new Map<number, Press>())
   const lastPieces = useRef<{ q: Quad; alpha: number }[]>([])
   const captionsRef = useRef(captions)
@@ -993,6 +995,14 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
     let raf = 0
     let last = performance.now()
     const tick = (now: number) => {
+      // Nothing of this scene is in view once the camera has come down onto Works, or when the
+      // hero has scrolled away: skip the heartbeat, the marquee and the hover work entirely
+      // (the scroll-driven draw still runs on its own when the camera moves back)
+      if ((downRef.current?.get() ?? 0) > 0.995 || !onScreen.current) {
+        last = now
+        raf = requestAnimationFrame(tick)
+        return
+      }
       const dt = Math.min(0.05, (now - last) / 1000)
       last = now
       const p = progress.get()
@@ -1081,6 +1091,14 @@ export default function LogoMorph({ progress, eyesRef, captions, pan, down, effe
       document.removeEventListener('pointerleave', onLeave)
     }
   }, [progress])
+
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const io = new IntersectionObserver(([e]) => { onScreen.current = e.isIntersecting })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
 
   // Keep the canvas matched to the card (HiDPI)
   useEffect(() => {
